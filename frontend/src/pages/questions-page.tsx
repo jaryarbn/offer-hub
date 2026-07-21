@@ -6,7 +6,7 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useQuestions } from "@/hooks/use-questions"
+import { useQuestionList } from "@/hooks/useQuestionQueries"
 
 const searchSchema = z.object({
   keyword: z.string().trim().max(80, "关键词不能超过 80 个字符"),
@@ -16,7 +16,7 @@ type SearchValues = z.infer<typeof searchSchema>
 
 export function QuestionsPage() {
   const [keyword, setKeyword] = useState("")
-  const { data, isPending, isFetching, isError, refetch } = useQuestions({
+  const { data, isPending, isFetching, isError, refetch } = useQuestionList({
     keyword,
     page: 1,
     page_size: 20,

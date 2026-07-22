@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,11 +16,128 @@ import (
 )
 
 const (
+	defaultRateLimitWindow     = 60 * time.Second
+	defaultRateLimitMax        = 20
+	rateLimitPrefix            = "rate_limit:"
 	defaultAuthRateLimitWindow = 60 * time.Second
 	defaultAuthRateLimitMax    = 10
 	authRateLimitPrefix        = "limit:auth:ip:"
 	rateLimitedMessage         = "请求过于频繁，请稍后再试"
 )
+
+type rateLimitRedisClient interface {
+	Incr(context.Context, string) *redis.IntCmd
+	Expire(context.Context, string, time.Duration) *redis.BoolCmd
+}
+
+type RateLimiter struct {
+	redisClient rateLimitRedisClient
+	limit       int
+	window      time.Duration
+}
+
+func (limiter *RateLimiter) IsRequestAllowed(keyID string) bool {
+	if limiter == nil || limiter.redisClient == nil || limiter.limit <= 0 {
+		return false
+	}
+
+	key, ok := rateLimitKey(keyID, time.Now(), limiter.window)
+	if !ok {
+		return false
+	}
+
+	ctx := context.Background()
+	count, err := limiter.redisClient.Incr(ctx, key).Result()
+	if err != nil {
+		log.Printf("rate limiter: increment counter: %v", err)
+		return false
+	}
+
+	if count == 1 {
+		if err := limiter.redisClient.Expire(ctx, key, limiter.window+time.Second).Err(); err != nil {
+			log.Printf("rate limiter: set counter TTL: %v", err)
+			return false
+		}
+	}
+
+	return count <= int64(limiter.limit)
+}
+
+// RateLimitMiddleware must run after JWT middleware so user_id is a verified
+// server-provided identity. Anonymous requests fall back to the client IP.
+func RateLimitMiddleware(cfg *config.Config) gin.HandlerFunc {
+	rateLimitConfig := resolveRateLimitConfig(cfg)
+	window, limit := normalizedRateLimit(rateLimitConfig)
+	limiter := &RateLimiter{
+		redisClient: data.GetRedis(),
+		limit:       limit,
+		window:      window,
+	}
+
+	return newRateLimitMiddleware(rateLimitConfig.Enable, limiter.IsRequestAllowed)
+}
+
+func newRateLimitMiddleware(enabled bool, isAllowed func(string) bool) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		if !enabled {
+			ctx.Next()
+			return
+		}
+
+		keyID := rateLimitKeyID(ctx)
+		if isAllowed == nil || !isAllowed(keyID) {
+			abortAuthRequestWithStatus(
+				ctx,
+				http.StatusTooManyRequests,
+				http.StatusTooManyRequests,
+				rateLimitedMessage,
+			)
+			return
+		}
+
+		ctx.Next()
+	}
+}
+
+func resolveRateLimitConfig(cfg *config.Config) config.RateLimitConfig {
+	if cfg != nil {
+		return *cfg
+	}
+	if config.Conf != nil {
+		return config.Conf.RateLimit
+	}
+	return config.RateLimitConfig{}
+}
+
+func normalizedRateLimit(rateLimitConfig config.RateLimitConfig) (time.Duration, int) {
+	window := time.Duration(rateLimitConfig.WindowSeconds) * time.Second
+	if window <= 0 {
+		window = defaultRateLimitWindow
+	}
+
+	limit := rateLimitConfig.MaxRequests
+	if limit <= 0 {
+		limit = defaultRateLimitMax
+	}
+	return window, limit
+}
+
+func rateLimitKeyID(ctx *gin.Context) string {
+	if userID := strings.TrimSpace(ctx.GetHeader("user_id")); userID != "" {
+		return "user:" + userID
+	}
+	return "ip:" + ctx.ClientIP()
+}
+
+func rateLimitKey(keyID string, now time.Time, window time.Duration) (string, bool) {
+	windowSeconds := int64(window / time.Second)
+	if strings.TrimSpace(keyID) == "" || windowSeconds <= 0 {
+		return "", false
+	}
+
+	windowStart := now.Unix() / windowSeconds
+	return fmt.Sprintf("%s%s:%d", rateLimitPrefix, keyID, windowStart), true
+}
 
 type rateLimitIncrementer func(context.Context, string, time.Duration) (int64, error)
 

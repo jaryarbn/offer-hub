@@ -76,6 +76,9 @@ type RateLimitConfig struct {
 	MaxRequests   int  `toml:"max_requests"`
 }
 
+// Config is the rate-limit configuration accepted by the HTTP middleware.
+type Config = RateLimitConfig
+
 func Init(configPath ...string) error {
 	path := resolveConfigPath(firstPath(configPath))
 	var loaded TomlConfig

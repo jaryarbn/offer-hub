@@ -1,10 +1,10 @@
-# Question Module Data Dictionary
+# Offer Hub Data Dictionary (Verified Sections)
 
 Source: [Feishu - Data Dictionary](https://acn2lw4rwc26.feishu.cn/wiki/VEfQwFVh7iaLAZk1iLGcNsMJnUZ)
 
 `analysis_content` is added by the verified question-detail authentication
-lesson contract; the two user-interaction collection schemas below come from
-the Feishu data dictionary.
+lesson contract. The remaining schemas below come from the Feishu data
+dictionary.
 
 Snapshot date: 2026-07-22. MongoDB field names below are persistence contracts.
 
@@ -33,6 +33,30 @@ Snapshot date: 2026-07-22. MongoDB field names below are persistence contracts.
 
 `user_tag` and `user_liked` are response fields derived from user interaction
 data. They are not fields of a question document.
+
+## comments
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | Mongo primary key |
+| `comment_id` | string | Business comment ID |
+| `target_type` | int | `1` question / `2` interview experience |
+| `target_id` | string | Comment target ID |
+| `question_id` | string | Associated question ID |
+| `user_id` | string | Comment author ID |
+| `content` | string | Comment content |
+| `parent_id` | string | Empty for a top-level comment; otherwise the parent comment ID |
+| `reply_to` | string | User ID being replied to; empty for a top-level comment |
+| `child_count` | int | Stored child count; second-level comments use `0` |
+| `thumbs_up` | int | Like count |
+| `view_count` | int | View count |
+| `status` | int | `1` reviewing / `2` normal / `3` rejected / `4` hidden / `5` deleted |
+| `create_time` | datetime | Creation time |
+| `update_time` | datetime | Update time |
+
+The list API derives `user_name`, `user_avatar`, `reply_to_name`,
+`sub_comment_total`, `sub_comments`, and `user_liked`; these are not persisted
+fields in `comments`.
 
 ## user_interactions
 

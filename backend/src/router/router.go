@@ -9,6 +9,7 @@ import (
 	"offer-hub/backend/src/config"
 	"offer-hub/backend/src/ctrl"
 	authctrl "offer-hub/backend/src/ctrl/auth"
+	commentctrl "offer-hub/backend/src/ctrl/comment"
 	questionctrl "offer-hub/backend/src/ctrl/question"
 	ctrltools "offer-hub/backend/src/ctrl/tools"
 	userinfoctrl "offer-hub/backend/src/ctrl/user_info"
@@ -57,5 +58,17 @@ func RegisterRouter(engine *gin.Engine) error {
 	questionRouter.GET("/meta/list", questionController.ListQuestionMeta)
 	questionRouter.GET("/detail", questionController.GetQuestionDetail)
 	questionRouter.GET("/hot/list", questionController.GetHotQuestionList)
+
+	commentService := service.NewCommentService(initializedData)
+	commentController := commentctrl.NewController(commentService)
+	commentRouter := engine.Group("/api/v1/comment")
+	commentRouter.Use(ctrltools.JWTAuthMiddleware())
+	commentRouter.POST("/add", commentController.AddComment)
+	commentRouter.POST("/delete", commentController.DeleteComment)
+	commentRouter.POST("/update", commentController.UpdateComment)
+
+	openRouter := engine.Group("/api/v1/open")
+	openRouter.Use(ctrltools.SoftJWTAuthMiddleware())
+	openRouter.GET("/list_comments", commentController.ListComments)
 	return nil
 }

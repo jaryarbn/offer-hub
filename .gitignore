@@ -152,5 +152,8 @@ backend/bin/
 # 配置文件（包含数据库密码等敏感信息）
 backend/src/config-online.toml
 
+# 本地接口文档与数据字典快照
+docs/reference/
+
 # 系统文件
 •DS_Store

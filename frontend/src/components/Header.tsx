@@ -18,7 +18,7 @@ import { postAuthLogout } from '@/services/auth'
 
 const navigationItems = [
   { label: '首页', to: '/' },
-  { label: '题库', to: '/questions' },
+  { label: '题库', to: '/questions-collection' },
 ]
 
 export interface HeaderProps {
@@ -175,11 +175,13 @@ function isNavigationItemActive(pathname: string, targetPath: string): boolean {
     return pathname === '/'
   }
 
-  return (
-    pathname === targetPath ||
-    pathname.startsWith(`${targetPath}/`) ||
-    (targetPath === '/questions' && pathname === '/questions-collection')
-  )
+  if (targetPath === '/questions-collection') {
+    return (
+      pathname === targetPath || pathname === '/questions' || pathname.startsWith('/questions/')
+    )
+  }
+
+  return pathname === targetPath || pathname.startsWith(`${targetPath}/`)
 }
 
 export default Header

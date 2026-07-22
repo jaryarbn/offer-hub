@@ -1,14 +1,14 @@
-import { useQuery } from "@tanstack/react-query"
-import type { UseQueryResult } from "@tanstack/react-query"
+import { useQuery } from '@tanstack/react-query'
+import type { UseQueryResult } from '@tanstack/react-query'
 
-import { QuestionApiError, questionApi } from "@/services/question"
+import { QuestionApiError, questionApi } from '@/services/question'
 import type {
   GetHotQuestionListResponseData,
   ListQuestionResponseData,
   Question,
   QuestionBankGroup,
   QuestionFilters,
-} from "@/types/question"
+} from '@/types/question'
 
 /**
  * 题目模块的查询键工厂。
@@ -17,21 +17,18 @@ import type {
  * 服务端数据因为 key 写法不同而生成多份缓存。
  */
 export const queryKeys = {
-  all: ["questions"] as const,
-  banks: (jobName?: string) =>
-    [...queryKeys.all, "banks", jobName ?? "all"] as const,
-  lists: ["questions", "list"] as const,
-  list: (filters: QuestionFilters) =>
-    [...queryKeys.lists, filters] as const,
-  details: ["questions", "detail"] as const,
-  detail: (questionId: string) =>
-    [...queryKeys.details, questionId] as const,
-  hot: ["questions", "hot"] as const,
+  all: ['questions'] as const,
+  banks: (jobName?: string) => [...queryKeys.all, 'banks', jobName ?? 'all'] as const,
+  lists: ['questions', 'list'] as const,
+  list: (filters: QuestionFilters) => [...queryKeys.lists, filters] as const,
+  details: ['questions', 'detail'] as const,
+  detail: (questionId: string) => [...queryKeys.details, questionId] as const,
+  hot: ['questions', 'hot'] as const,
 }
 
 /** 获取按职位方向和系列分组的题库列表。 */
 export function useQuestionBanks(
-  jobName?: string,
+  jobName?: string
 ): UseQueryResult<QuestionBankGroup[], QuestionApiError> {
   const normalizedJobName = jobName?.trim() || undefined
 
@@ -39,7 +36,7 @@ export function useQuestionBanks(
     queryKey: queryKeys.banks(normalizedJobName),
     queryFn: () =>
       questionApi.getAllQuestionBanks(
-        normalizedJobName ? { job_name: normalizedJobName } : undefined,
+        normalizedJobName ? { job_name: normalizedJobName } : undefined
       ),
   })
 }
@@ -50,7 +47,7 @@ export function useQuestionBanks(
  */
 export function useQuestionList(
   filters: QuestionFilters,
-  enabled = true,
+  enabled = true
 ): UseQueryResult<ListQuestionResponseData, QuestionApiError> {
   return useQuery<ListQuestionResponseData, QuestionApiError>({
     queryKey: queryKeys.list(filters),
@@ -65,14 +62,13 @@ export function useQuestionList(
  */
 export function useQuestionDetail(
   questionId: string,
-  enabled = true,
+  enabled = true
 ): UseQueryResult<Question, QuestionApiError> {
   const normalizedQuestionId = questionId.trim()
 
   return useQuery<Question, QuestionApiError>({
     queryKey: queryKeys.detail(normalizedQuestionId),
-    queryFn: () =>
-      questionApi.getQuestionDetail({ question_id: normalizedQuestionId }),
+    queryFn: () => questionApi.getQuestionDetail({ question_id: normalizedQuestionId }),
     enabled: enabled && normalizedQuestionId.length > 0,
   })
 }
@@ -84,7 +80,7 @@ export function useQuestionDetail(
 export function useBankQuestionList(
   bankId: string,
   keyword?: string,
-  enabled = true,
+  enabled = true
 ): UseQueryResult<ListQuestionResponseData, QuestionApiError> {
   const normalizedBankId = bankId.trim()
   const normalizedKeyword = keyword?.trim() || undefined

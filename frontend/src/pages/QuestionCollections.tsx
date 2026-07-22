@@ -1,16 +1,10 @@
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  Layers3,
-  RotateCcw,
-} from "lucide-react"
-import { Link, useSearchParams } from "react-router-dom"
+import { AlertCircle, ArrowRight, BookOpen, Layers3, RotateCcw } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
 
-import { Button } from "@/components/ui/button"
-import { useQuestionBanks } from "@/hooks/useQuestionQueries"
-import { cn } from "@/lib/utils"
-import type { QuestionBankGroup } from "@/types/question"
+import { Button } from '@/components/ui/button'
+import { useQuestionBanks } from '@/hooks/useQuestionQueries'
+import { cn } from '@/lib/utils'
+import type { QuestionBankGroup } from '@/types/question'
 
 export function QuestionCollections() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -30,7 +24,7 @@ export function QuestionCollections() {
           <AlertCircle className="size-6 text-destructive" aria-hidden="true" />
           <h2 className="mt-3 text-sm font-semibold">题库加载失败</h2>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            {error.message || "暂时无法获取题库，请稍后重试。"}
+            {error.message || '暂时无法获取题库，请稍后重试。'}
           </p>
           <Button
             type="button"
@@ -53,20 +47,18 @@ export function QuestionCollections() {
         <div className="flex min-h-72 flex-col items-center justify-center border-y border-border px-4 text-center">
           <Layers3 className="size-6 text-muted-foreground" aria-hidden="true" />
           <h2 className="mt-3 text-sm font-semibold">暂无可用题库</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            题库数据准备完成后会显示在这里。
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">题库数据准备完成后会显示在这里。</p>
         </div>
       </PageLayout>
     )
   }
 
-  const activeIndex = getActiveIndex(searchParams.get("activeIndex"), data.length)
+  const activeIndex = getActiveIndex(searchParams.get('activeIndex'), data.length)
   const activeGroup = data[activeIndex]
 
   const selectGroup = (nextIndex: number) => {
     const nextParams = new URLSearchParams(searchParams)
-    nextParams.set("activeIndex", String(nextIndex))
+    nextParams.set('activeIndex', String(nextIndex))
     setSearchParams(nextParams, { replace: true })
   }
 
@@ -82,11 +74,12 @@ export function QuestionCollections() {
                 <button
                   type="button"
                   className={cn(
-                    "relative h-11 px-4 text-sm font-medium text-muted-foreground outline-none transition-colors",
-                    "hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                    isActive && "text-foreground after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:bg-foreground",
+                    'relative h-11 px-4 text-sm font-medium text-muted-foreground outline-none transition-colors',
+                    'hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                    isActive &&
+                      'text-foreground after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:bg-foreground'
                   )}
-                  aria-current={isActive ? "page" : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => selectGroup(index)}
                 >
                   {group.job_name}
@@ -111,7 +104,7 @@ function QuestionBankGroupContent({
 }) {
   return (
     <div className="space-y-9 pt-8">
-      {group.series_list.map((series) => (
+      {group.series_list.map(series => (
         <section key={series.series_id} aria-labelledby={`series-${series.series_id}`}>
           <div className="mb-4 flex items-baseline justify-between gap-4">
             <h2 id={`series-${series.series_id}`} className="text-base font-semibold">
@@ -123,7 +116,7 @@ function QuestionBankGroupContent({
           </div>
 
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {series.bank_list.map((bank) => (
+            {series.bank_list.map(bank => (
               <li key={bank.bank_id}>
                 <Link
                   to={getQuestionListUrl(bank.bank_id, activeIndex)}
@@ -138,11 +131,9 @@ function QuestionBankGroupContent({
                       aria-hidden="true"
                     />
                   </div>
-                  <h3 className="mt-4 text-sm font-semibold leading-5">
-                    {bank.bank_name}
-                  </h3>
+                  <h3 className="mt-4 text-sm font-semibold leading-5">{bank.bank_name}</h3>
                   <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                    {bank.desc || "暂无题库描述"}
+                    {bank.desc || '暂无题库描述'}
                   </p>
                   <span className="mt-auto pt-4 text-xs text-muted-foreground">
                     {bank.count} 道题目
@@ -189,15 +180,18 @@ function QuestionCollectionsSkeleton() {
     <PageLayout>
       <div aria-busy="true" aria-label="题库加载中">
         <div className="flex h-11 gap-3 border-b border-border">
-          {[0, 1, 2].map((item) => (
+          {[0, 1, 2].map(item => (
             <div key={item} className="mt-3 h-4 w-20 animate-pulse rounded-sm bg-muted" />
           ))}
         </div>
         <div className="pt-8">
           <div className="h-5 w-28 animate-pulse rounded-sm bg-muted" />
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="min-h-36 animate-pulse rounded-md border border-border p-4">
+            {[0, 1, 2, 3, 4, 5].map(item => (
+              <div
+                key={item}
+                className="min-h-36 animate-pulse rounded-md border border-border p-4"
+              >
                 <div className="size-9 rounded-md bg-muted" />
                 <div className="mt-4 h-4 w-2/3 rounded-sm bg-muted" />
                 <div className="mt-2 h-3 w-5/6 rounded-sm bg-muted" />
@@ -211,7 +205,7 @@ function QuestionCollectionsSkeleton() {
 }
 
 function getActiveIndex(value: string | null, groupCount: number): number {
-  if (value === null || value.trim() === "") return 0
+  if (value === null || value.trim() === '') return 0
 
   const index = Number(value)
   return Number.isInteger(index) && index >= 0 && index < groupCount ? index : 0

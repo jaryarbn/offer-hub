@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: frontend-lint-staged
+        name: frontend lint-staged
+        entry: bash -c 'cd frontend && npx --no-install lint-staged'
+        language: system
+        files: ^frontend/
+        pass_filenames: false
+
+      - id: backend-go-fmt
+        name: backend go fmt
+        entry: make -C backend fmt
+        language: system
+        files: ^backend/.*\.go$
+        pass_filenames: false
+
+      - id: backend-go-vet
+        name: backend go vet
+        entry: make -C backend vet
+        language: system
+        files: ^backend/.*\.go$
+        pass_filenames: false

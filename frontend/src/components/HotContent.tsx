@@ -1,8 +1,8 @@
-import { Flame, RotateCcw } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Flame, RotateCcw } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-import { Button } from "@/components/ui/button"
-import { useHotQuestions } from "@/hooks/useQuestionQueries"
+import { Button } from '@/components/ui/button'
+import { useHotQuestions } from '@/hooks/useQuestionQueries'
 
 export function HotContent() {
   const { data, isPending, isError, refetch } = useHotQuestions()
@@ -47,7 +47,7 @@ export function HotContent() {
                 className="group grid grid-cols-[1.5rem_1fr] gap-2 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="pt-0.5 font-mono text-xs text-muted-foreground">
-                  {String(index + 1).padStart(2, "0")}
+                  {String(index + 1).padStart(2, '0')}
                 </span>
                 <span className="min-w-0">
                   <span className="line-clamp-2 text-sm font-medium leading-5 group-hover:underline">
@@ -69,7 +69,7 @@ export function HotContent() {
 function HotContentSkeleton() {
   return (
     <div className="divide-y divide-border" aria-busy="true" aria-label="热门题目加载中">
-      {[0, 1, 2, 3, 4].map((item) => (
+      {[0, 1, 2, 3, 4].map(item => (
         <div key={item} className="grid grid-cols-[1.5rem_1fr] gap-2 py-4">
           <div className="h-3 w-4 animate-pulse rounded-sm bg-muted" />
           <div>

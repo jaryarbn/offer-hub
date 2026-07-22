@@ -34,4 +34,3 @@ volumes:
   mysql_dev_data:
   mongodb_dev_data:
   redis_dev_data:
-

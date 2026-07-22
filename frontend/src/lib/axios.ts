@@ -1,24 +1,24 @@
-import axios from "axios"
+import axios from 'axios'
 
-const TOKEN_KEY = "token"
+const TOKEN_KEY = 'token'
 
 const apiClient = axios.create({
-  baseURL: "",
+  baseURL: '',
   timeout: 10_000,
 })
 
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use(config => {
   const token = localStorage.getItem(TOKEN_KEY)
 
   if (token) {
-    config.headers.set("Authorization", `Bearer ${token}`)
+    config.headers.set('Authorization', `Bearer ${token}`)
   }
 
   return config
 })
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  response => response,
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {
@@ -29,7 +29,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error)
-  },
+  }
 )
 
 export { apiClient }

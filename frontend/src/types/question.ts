@@ -1,12 +1,8 @@
-import type { ApiResponse } from "@/types/api"
+import type { ApiResponse } from '@/types/api'
 
-export type QuestionSortBy =
-  | "create_time"
-  | "view_count"
-  | "thumbs_up_count"
-  | "dislike_count"
+export type QuestionSortBy = 'create_time' | 'view_count' | 'thumbs_up_count' | 'dislike_count'
 
-export type SortOrder = "asc" | "desc"
+export type SortOrder = 'asc' | 'desc'
 
 /** GET /api/v1/question/all/list 查询参数。 */
 export interface GetQuestionBankSeriesParams {
@@ -119,5 +115,4 @@ export type GetQuestionBankSeriesResponse = ApiResponse<QuestionBankGroup[]>
 export type ListQuestionResponse = ApiResponse<ListQuestionResponseData>
 export type ListQuestionMetaResponse = ApiResponse<ListQuestionMetaResponseData>
 export type GetQuestionDetailResponse = ApiResponse<Question>
-export type GetHotQuestionListResponse =
-  ApiResponse<GetHotQuestionListResponseData>
+export type GetHotQuestionListResponse = ApiResponse<GetHotQuestionListResponseData>

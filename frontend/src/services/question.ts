@@ -1,5 +1,5 @@
-import apiClient from "@/lib/axios"
-import type { ApiResponse } from "@/types/api"
+import apiClient from '@/lib/axios'
+import type { ApiResponse } from '@/types/api'
 import type {
   GetHotQuestionListParams,
   GetHotQuestionListResponse,
@@ -16,10 +16,10 @@ import type {
   ListQuestionResponseData,
   Question,
   QuestionBankGroup,
-} from "@/types/question"
-import { compactParams } from "@/utils/query"
+} from '@/types/question'
+import { compactParams } from '@/utils/query'
 
-const questionBasePath = "/api/v1/question"
+const questionBasePath = '/api/v1/question'
 
 /** 题目接口抛出的统一错误，code 对应后端业务响应 code。 */
 export class QuestionApiError extends Error {
@@ -27,45 +27,34 @@ export class QuestionApiError extends Error {
 
   constructor(code: number, message: string, options?: ErrorOptions) {
     super(message, options)
-    this.name = "QuestionApiError"
+    this.name = 'QuestionApiError'
     this.code = code
   }
 }
 
 export interface QuestionApiService {
-  getAllQuestionBanks(
-    params?: GetQuestionBankSeriesParams,
-  ): Promise<QuestionBankGroup[]>
-  getQuestionList(
-    params?: ListQuestionParams,
-  ): Promise<ListQuestionResponseData>
-  getQuestionMetaList(
-    params?: ListQuestionMetaParams,
-  ): Promise<ListQuestionMetaResponseData>
+  getAllQuestionBanks(params?: GetQuestionBankSeriesParams): Promise<QuestionBankGroup[]>
+  getQuestionList(params?: ListQuestionParams): Promise<ListQuestionResponseData>
+  getQuestionMetaList(params?: ListQuestionMetaParams): Promise<ListQuestionMetaResponseData>
   getQuestionDetail(params: GetQuestionDetailParams): Promise<Question>
-  getHotQuestionList(
-    params?: GetHotQuestionListParams,
-  ): Promise<GetHotQuestionListResponseData>
+  getHotQuestionList(params?: GetHotQuestionListParams): Promise<GetHotQuestionListResponseData>
 }
 
 function unwrapResponse<T>(
   response: ApiResponse<T> | null | undefined,
-  fallbackMessage: string,
+  fallbackMessage: string
 ): T {
   if (
     !response ||
-    typeof response.code !== "number" ||
-    typeof response.msg !== "string" ||
-    !("data" in response)
+    typeof response.code !== 'number' ||
+    typeof response.msg !== 'string' ||
+    !('data' in response)
   ) {
     throw new QuestionApiError(-1, `${fallbackMessage}：响应格式错误`)
   }
 
   if (response.code !== 0) {
-    throw new QuestionApiError(
-      response.code,
-      response.msg.trim() || fallbackMessage,
-    )
+    throw new QuestionApiError(response.code, response.msg.trim() || fallbackMessage)
   }
 
   if (response.data === null || response.data === undefined) {
@@ -81,22 +70,18 @@ function normalizeRequestError(error: unknown, fallbackMessage: string): never {
   }
 
   // axios 响应拦截器会优先抛出后端的 { code, msg, data } 错误体。
-  if (typeof error === "object" && error !== null) {
+  if (typeof error === 'object' && error !== null) {
     const candidate = error as { code?: unknown; msg?: unknown }
-    if (typeof candidate.msg === "string" && candidate.msg.trim()) {
+    if (typeof candidate.msg === 'string' && candidate.msg.trim()) {
       throw new QuestionApiError(
-        typeof candidate.code === "number" ? candidate.code : -1,
-        candidate.msg,
+        typeof candidate.code === 'number' ? candidate.code : -1,
+        candidate.msg
       )
     }
   }
 
   if (error instanceof Error) {
-    throw new QuestionApiError(
-      -1,
-      `${fallbackMessage}：${error.message}`,
-      { cause: error },
-    )
+    throw new QuestionApiError(-1, `${fallbackMessage}：${error.message}`, { cause: error })
   }
 
   throw new QuestionApiError(-1, fallbackMessage)
@@ -104,7 +89,7 @@ function normalizeRequestError(error: unknown, fallbackMessage: string): never {
 
 async function requestData<T>(
   request: () => Promise<ApiResponse<T>>,
-  fallbackMessage: string,
+  fallbackMessage: string
 ): Promise<T> {
   try {
     return unwrapResponse(await request(), fallbackMessage)
@@ -127,10 +112,10 @@ export const questionApi: QuestionApiService = {
     return requestData<QuestionBankGroup[]>(async () => {
       const response = await apiClient.get<GetQuestionBankSeriesResponse>(
         `${questionBasePath}/all/list`,
-        { params: compactParams(params) },
+        { params: compactParams(params) }
       )
       return response.data
-    }, "获取题库列表失败")
+    }, '获取题库列表失败')
   },
 
   /**
@@ -142,16 +127,13 @@ export const questionApi: QuestionApiService = {
    */
   async getQuestionList(params = {}) {
     return requestData<ListQuestionResponseData>(async () => {
-      const response = await apiClient.get<ListQuestionResponse>(
-        `${questionBasePath}/list`,
-        {
-          params: compactParams(params),
-          // Gin 使用 form:"tags"，数组必须编码为 tags=a&tags=b。
-          paramsSerializer: { indexes: null },
-        },
-      )
+      const response = await apiClient.get<ListQuestionResponse>(`${questionBasePath}/list`, {
+        params: compactParams(params),
+        // Gin 使用 form:"tags"，数组必须编码为 tags=a&tags=b。
+        paramsSerializer: { indexes: null },
+      })
       return response.data
-    }, "获取题目列表失败")
+    }, '获取题目列表失败')
   },
 
   /**
@@ -168,10 +150,10 @@ export const questionApi: QuestionApiService = {
         {
           params: compactParams(params),
           paramsSerializer: { indexes: null },
-        },
+        }
       )
       return response.data
-    }, "获取题目元数据失败")
+    }, '获取题目元数据失败')
   },
 
   /**
@@ -184,16 +166,16 @@ export const questionApi: QuestionApiService = {
   async getQuestionDetail(params) {
     const questionId = params.question_id.trim()
     if (!questionId) {
-      throw new QuestionApiError(400, "question_id 不能为空")
+      throw new QuestionApiError(400, 'question_id 不能为空')
     }
 
     return requestData<Question>(async () => {
       const response = await apiClient.get<GetQuestionDetailResponse>(
         `${questionBasePath}/detail`,
-        { params: { question_id: questionId } },
+        { params: { question_id: questionId } }
       )
       return response.data
-    }, "获取题目详情失败")
+    }, '获取题目详情失败')
   },
 
   /**
@@ -207,9 +189,9 @@ export const questionApi: QuestionApiService = {
     return requestData<GetHotQuestionListResponseData>(async () => {
       const response = await apiClient.get<GetHotQuestionListResponse>(
         `${questionBasePath}/hot/list`,
-        { params: compactParams(params) },
+        { params: compactParams(params) }
       )
       return response.data
-    }, "获取热门题目失败")
+    }, '获取热门题目失败')
   },
 }

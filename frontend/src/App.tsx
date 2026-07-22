@@ -1,11 +1,11 @@
-import { Route, Routes } from "react-router-dom"
+import { Route, Routes } from 'react-router-dom'
 
-import { AppProvider } from "@/components/provider/app-provider"
-import { HomePage } from "@/pages/home-page"
-import { NotFoundPage } from "@/pages/not-found-page"
-import { QuestionCollections } from "@/pages/QuestionCollections"
-import { QuestionDetail } from "@/pages/QuestionDetail"
-import { Questions } from "@/pages/Questions"
+import { AppProvider } from '@/components/provider/app-provider'
+import { HomePage } from '@/pages/home-page'
+import { NotFoundPage } from '@/pages/not-found-page'
+import { QuestionCollections } from '@/pages/QuestionCollections'
+import { QuestionDetail } from '@/pages/QuestionDetail'
+import { Questions } from '@/pages/Questions'
 
 export default function App() {
   return (

@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 
 interface QuestionPaginationProps {
   page: number
@@ -8,11 +8,7 @@ interface QuestionPaginationProps {
   onChange: (page: number) => void
 }
 
-export function QuestionPagination({
-  page,
-  totalPages,
-  onChange,
-}: QuestionPaginationProps) {
+export function QuestionPagination({ page, totalPages, onChange }: QuestionPaginationProps) {
   return (
     <nav aria-label="题目分页" className="mt-6 flex items-center justify-between gap-3">
       <span className="text-sm text-muted-foreground">
@@ -23,15 +19,15 @@ export function QuestionPagination({
           <ChevronLeft aria-hidden="true" />
         </PageArrow>
         {getVisiblePages(page, totalPages).map((item, index) =>
-          typeof item === "number" ? (
+          typeof item === 'number' ? (
             <Button
               key={item}
               type="button"
-              variant={item === page ? "default" : "outline"}
+              variant={item === page ? 'default' : 'outline'}
               size="icon"
-              className={item === page ? undefined : "hidden sm:inline-flex"}
+              className={item === page ? undefined : 'hidden sm:inline-flex'}
               aria-label={`第 ${item} 页`}
-              aria-current={item === page ? "page" : undefined}
+              aria-current={item === page ? 'page' : undefined}
               onClick={() => onChange(item)}
             >
               {item}
@@ -44,13 +40,9 @@ export function QuestionPagination({
             >
               ...
             </span>
-          ),
+          )
         )}
-        <PageArrow
-          label="下一页"
-          disabled={page >= totalPages}
-          onClick={() => onChange(page + 1)}
-        >
+        <PageArrow label="下一页" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>
           <ChevronRight aria-hidden="true" />
         </PageArrow>
       </div>
@@ -84,15 +76,15 @@ function PageArrow({
   )
 }
 
-function getVisiblePages(current: number, total: number): Array<number | "start" | "end"> {
+function getVisiblePages(current: number, total: number): Array<number | 'start' | 'end'> {
   if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1)
 
-  const items: Array<number | "start" | "end"> = [1]
-  if (current > 4) items.push("start")
+  const items: Array<number | 'start' | 'end'> = [1]
+  if (current > 4) items.push('start')
   const start = Math.max(2, current - 1)
   const end = Math.min(total - 1, current + 1)
   for (let page = start; page <= end; page += 1) items.push(page)
-  if (current < total - 3) items.push("end")
+  if (current < total - 3) items.push('end')
   items.push(total)
   return items
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 
@@ -11,6 +13,13 @@ import (
 )
 
 var redisClient *redis.Client
+
+var (
+	ErrRedisNotInitialized = errors.New("Redis is not initialized")
+	ErrInvalidBlacklistTTL = errors.New("blacklist TTL must be positive")
+)
+
+const tokenBlacklistPrefix = "blacklist:"
 
 func NewRedis(conf *config.TomlConfig) (*redis.Client, error) {
 	if conf == nil {
@@ -46,4 +55,25 @@ func CloseRedis() error {
 	err := redisClient.Close()
 	redisClient = nil
 	return err
+}
+
+func (data *Data) AddTokenToBlacklist(ctx context.Context, token string, ttl time.Duration) error {
+	if strings.TrimSpace(token) == "" {
+		return errors.New("token is empty")
+	}
+	if ttl <= 0 {
+		return ErrInvalidBlacklistTTL
+	}
+	if redisClient == nil {
+		return ErrRedisNotInitialized
+	}
+
+	if err := redisClient.Set(ctx, blacklistKey(token), "1", ttl).Err(); err != nil {
+		return fmt.Errorf("write token blacklist: %w", err)
+	}
+	return nil
+}
+
+func blacklistKey(token string) string {
+	return tokenBlacklistPrefix + token
 }

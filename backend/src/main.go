@@ -30,6 +30,14 @@ func run() error {
 			log.Printf("close databases: %v", err)
 		}
 	}()
+	if _, err := data.NewRedis(config.Conf); err != nil {
+		return fmt.Errorf("initialize Redis: %w", err)
+	}
+	defer func() {
+		if err := data.CloseRedis(); err != nil {
+			log.Printf("close Redis: %v", err)
+		}
+	}()
 
 	router, err := ngin.CreateGin()
 	if err != nil {

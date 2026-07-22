@@ -1,0 +1,22 @@
+CREATE TABLE `offer_hub`.`t_user_info` (
+  `id` INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id` VARCHAR(256) NOT NULL COMMENT '用户唯一标识，UUID，全局唯一',
+  `username` VARCHAR(50) NOT NULL COMMENT '登录用户名，全局唯一',
+  `password` VARCHAR(100) NOT NULL COMMENT 'bcrypt 加密后的密码，不存明文',
+  `nick_name` VARCHAR(256) NOT NULL DEFAULT '' COMMENT '昵称，展示用',
+  `avatar` VARCHAR(256) NOT NULL DEFAULT '' COMMENT '头像图片 URL',
+  `introduction` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT '个人简介',
+  `phone` VARCHAR(256) NOT NULL DEFAULT '' COMMENT '手机号',
+  `email` VARCHAR(256) NOT NULL DEFAULT '' COMMENT '邮箱',
+  `sex` TINYINT DEFAULT 1 COMMENT '性别：1未知/2男/3女',
+  `vip` TINYINT DEFAULT 0 COMMENT '是否 VIP：0否/1是',
+  `user_status` TINYINT DEFAULT 1 COMMENT '账号状态：1正常/-1禁用',
+  `user_type` TINYINT DEFAULT 1 COMMENT '用户类型：1普通用户/2内测用户',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_id` (`user_id`),
+  UNIQUE KEY `uk_username` (`username`),
+  KEY `idx_phone` (`phone`),
+  KEY `idx_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';

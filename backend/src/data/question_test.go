@@ -107,6 +107,29 @@ func TestBuildUserQuestionTagFilter(t *testing.T) {
 	}
 }
 
+func TestBuildUserQuestionTagListFilter(t *testing.T) {
+	got := buildUserQuestionTagListFilter("user-1", 2)
+	want := bson.D{
+		{Key: "user_id", Value: "user-1"},
+		{Key: "tag", Value: 2},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildUserQuestionTagListFilter() = %#v, want %#v", got, want)
+	}
+}
+
+func TestAppendTaggedQuestionFilter(t *testing.T) {
+	base := bson.D{{Key: "status", Value: questionNormalStatus}}
+	got := appendTaggedQuestionFilter(base, []string{"question-1", "question-2"})
+	want := bson.D{
+		{Key: "status", Value: questionNormalStatus},
+		{Key: "question_id", Value: bson.D{{Key: "$in", Value: []string{"question-1", "question-2"}}}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("appendTaggedQuestionFilter() = %#v, want %#v", got, want)
+	}
+}
+
 func TestBuildHotQuestionQuery(t *testing.T) {
 	filter := buildHotQuestionFilter("后端开发")
 	wantFilter := bson.D{

@@ -168,9 +168,9 @@ type GetCommentLikedCollectedCountResp struct {
 	Data GetCommentLikedCollectedCountData `json:"data"`
 }
 
-// InteractionLikeReq represents a request to like a question, interview experience, or comment.
+// InteractionLikeReq represents a request to like a question or comment.
 type InteractionLikeReq struct {
-	TargetType int    `json:"target_type" form:"target_type" binding:"required,oneof=1 2 3"`
+	TargetType int    `json:"target_type" form:"target_type" binding:"required,oneof=1 3"`
 	TargetID   string `json:"target_id" form:"target_id" binding:"required"`
 }
 
@@ -200,4 +200,18 @@ type InteractionUnlikeResp struct {
 	Code int                   `json:"code"`
 	Msg  string                `json:"msg"`
 	Data InteractionUnlikeData `json:"data"`
+}
+
+// TagQuestionReq represents a request to update the current user's question tag.
+// Tag is a pointer so JSON binding can distinguish a missing field from the valid value 0.
+type TagQuestionReq struct {
+	QuestionID string `json:"question_id" form:"question_id" binding:"required"`
+	Tag        *int   `json:"tag" form:"tag" binding:"required"`
+}
+
+// TagQuestionResp follows the documented response, whose data field is null.
+type TagQuestionResp struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data"`
 }

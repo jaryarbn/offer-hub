@@ -76,6 +76,8 @@ type QuestionFilter struct {
 	Difficulty int
 	Tags       []string
 	JobName    string
+	UserID     string
+	UserTag    int
 	SortBy     string
 	SortOrder  string
 	Page       int
@@ -94,6 +96,13 @@ func (data *Data) FilterQuestions(
 	filter QuestionFilter,
 ) ([]QuestionRecord, int64, error) {
 	query := buildQuestionFilter(filter)
+	if filter.UserTag != 0 {
+		questionIDs, err := data.listQuestionIDsByUserTag(ctx, filter.UserID, filter.UserTag)
+		if err != nil {
+			return nil, 0, err
+		}
+		query = appendTaggedQuestionFilter(query, questionIDs)
+	}
 	collection := data.MongoDB.Collection(questionCollection)
 
 	total, err := collection.CountDocuments(ctx, query)
@@ -116,6 +125,43 @@ func (data *Data) FilterQuestions(
 		return nil, 0, fmt.Errorf("decode %s: %w", questionCollection, err)
 	}
 	return records, total, nil
+}
+
+func (data *Data) listQuestionIDsByUserTag(
+	ctx context.Context,
+	userID string,
+	tag int,
+) ([]string, error) {
+	questionIDs := make([]string, 0)
+	if userID == "" {
+		return questionIDs, nil
+	}
+
+	cursor, err := data.MongoDB.Collection(userQuestionTagCollection).Find(
+		ctx,
+		buildUserQuestionTagListFilter(userID, tag),
+		options.Find().SetProjection(bson.D{
+			{Key: "_id", Value: 0},
+			{Key: "question_id", Value: 1},
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query %s by user tag: %w", userQuestionTagCollection, err)
+	}
+	defer cursor.Close(ctx)
+
+	var records []struct {
+		QuestionID string `bson:"question_id"`
+	}
+	if err := cursor.All(ctx, &records); err != nil {
+		return nil, fmt.Errorf("decode %s question ids: %w", userQuestionTagCollection, err)
+	}
+	for _, record := range records {
+		if record.QuestionID != "" {
+			questionIDs = append(questionIDs, record.QuestionID)
+		}
+	}
+	return questionIDs, nil
 }
 
 func (data *Data) GetQuestionByID(ctx context.Context, questionID string) (QuestionRecord, error) {
@@ -184,6 +230,20 @@ func buildUserQuestionTagFilter(userID, questionID string) bson.D {
 		{Key: "user_id", Value: userID},
 		{Key: "question_id", Value: questionID},
 	}
+}
+
+func buildUserQuestionTagListFilter(userID string, tag int) bson.D {
+	return bson.D{
+		{Key: "user_id", Value: userID},
+		{Key: "tag", Value: tag},
+	}
+}
+
+func appendTaggedQuestionFilter(query bson.D, questionIDs []string) bson.D {
+	return append(query, bson.E{
+		Key:   "question_id",
+		Value: bson.D{{Key: "$in", Value: questionIDs}},
+	})
 }
 
 func (data *Data) ListHotQuestions(

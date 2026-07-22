@@ -16,6 +16,8 @@ import type {
   ListQuestionResponseData,
   QuestionBankGroup,
   QuestionDetail,
+  QuestionTag,
+  TagQuestionResponse,
 } from '@/types/question'
 import { compactParams } from '@/utils/query'
 
@@ -38,6 +40,7 @@ export interface QuestionApiService {
   getQuestionMetaList(params?: ListQuestionMetaParams): Promise<ListQuestionMetaResponseData>
   getQuestionDetail(params: GetQuestionDetailParams): Promise<QuestionDetail>
   getHotQuestionList(params?: GetHotQuestionListParams): Promise<GetHotQuestionListResponseData>
+  tagQuestion(questionId: string, tag: QuestionTag): Promise<void>
 }
 
 function unwrapResponse<T>(
@@ -95,6 +98,31 @@ async function requestData<T>(
     return unwrapResponse(await request(), fallbackMessage)
   } catch (error) {
     normalizeRequestError(error, fallbackMessage)
+  }
+}
+
+/** 更新当前用户对题目的掌握状态。成功响应的 data 按接口约定为 null。 */
+export async function tagQuestion(questionId: string, tag: QuestionTag): Promise<void> {
+  const normalizedQuestionId = questionId.trim()
+  if (!normalizedQuestionId) {
+    throw new QuestionApiError(400, 'question_id 不能为空')
+  }
+
+  try {
+    const response = await apiClient.post<TagQuestionResponse>('/api/v1/safe/tag_question', {
+      question_id: normalizedQuestionId,
+      tag,
+    })
+    const body = response.data
+
+    if (!body || typeof body.code !== 'number' || typeof body.msg !== 'string') {
+      throw new QuestionApiError(-1, '更新掌握状态失败：响应格式错误')
+    }
+    if (body.code !== 0) {
+      throw new QuestionApiError(body.code, body.msg.trim() || '更新掌握状态失败')
+    }
+  } catch (error) {
+    normalizeRequestError(error, '更新掌握状态失败')
   }
 }
 
@@ -194,4 +222,6 @@ export const questionApi: QuestionApiService = {
       return response.data
     }, '获取热门题目失败')
   },
+
+  tagQuestion,
 }

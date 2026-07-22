@@ -4,8 +4,8 @@ import { LoaderCircle, Pencil, Reply, ThumbsUp, Trash2 } from 'lucide-react'
 import { useLogin } from '@/components/provider/LoginProvider'
 import { Button } from '@/components/ui/button'
 import { useDeleteComment } from '@/hooks/useCommentQueries'
-import { thumbsUpComment } from '@/services/comment'
-import type { CommentInfo } from '@/types/comment'
+import { toggleLike } from '@/services/comment'
+import { TargetType, type CommentInfo } from '@/types/comment'
 
 export interface CommentActionsProps {
   comment: CommentInfo
@@ -49,7 +49,7 @@ export function CommentActions({ comment, isOwnComment, onReply, onEdit }: Comme
     setIsLiking(true)
     setLikeError(null)
     try {
-      const result = await thumbsUpComment({ comment_id: comment.comment_id })
+      const result = await toggleLike(TargetType.COMMENT, comment.comment_id, !isLiked)
       setLikeCount(result.count)
       setIsLiked(result.liked)
     } catch (error) {

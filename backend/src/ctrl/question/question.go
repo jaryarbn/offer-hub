@@ -15,8 +15,8 @@ import (
 
 type Service interface {
 	GetAllQuestionList(context.Context, model.GetAllQuestionListReq) ([]model.GetAllQuestionListData, error)
-	ListQuestions(context.Context, model.ListQuestionReq) (model.ListQuestionResponseData, error)
-	ListQuestionsMeta(context.Context, model.ListQuestionMetaReq) (model.ListQuestionMetaResp, error)
+	ListQuestions(context.Context, model.ListQuestionReq, string) (model.ListQuestionResponseData, error)
+	ListQuestionsMeta(context.Context, model.ListQuestionMetaReq, string) (model.ListQuestionMetaResp, error)
 	GetQuestionDetail(context.Context, model.GetQuestionDetailReq, string) (model.QuestionDetail, error)
 	GetHotQuestions(context.Context, model.GetHotQuestionsReq) (model.GetHotQuestionsResp, error)
 }
@@ -45,7 +45,8 @@ func (controller *Controller) ListQuestions(ctx *gin.Context) {
 	}
 	applyListQuestionDefaults(&req)
 
-	data, err := controller.service.ListQuestions(ctx.Request.Context(), req)
+	userID := strings.TrimSpace(ctx.GetHeader("user_id"))
+	data, err := controller.service.ListQuestions(ctx.Request.Context(), req, userID)
 	if err != nil {
 		log.Printf("list questions: %v", err)
 		ctx.JSON(http.StatusOK, gin.H{"code": 500, "msg": "internal server error", "data": nil})
@@ -78,7 +79,8 @@ func (controller *Controller) ListQuestionsMeta(ctx *gin.Context) {
 	}
 	applyListQuestionDefaults(&req)
 
-	response, err := controller.service.ListQuestionsMeta(ctx.Request.Context(), req)
+	userID := strings.TrimSpace(ctx.GetHeader("user_id"))
+	response, err := controller.service.ListQuestionsMeta(ctx.Request.Context(), req, userID)
 	if err != nil {
 		log.Printf("list question metadata: %v", err)
 		ctx.JSON(http.StatusOK, gin.H{"code": 500, "msg": "internal server error", "data": nil})

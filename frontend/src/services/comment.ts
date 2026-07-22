@@ -9,10 +9,11 @@ import type {
   ListCommentsParams,
   ListCommentsResponse,
   ListCommentsResponseData,
+  LikeResponse,
+  LikeTargetType,
   ReplyCommentParams,
-  ThumbsUpCommentParams,
-  ThumbsUpCommentResponse,
-  ThumbsUpCommentResponseData,
+  ToggleLikeResult,
+  UnlikeResponse,
   UpdateCommentParams,
   UpdateCommentResponse,
   UpdateCommentResponseData,
@@ -21,6 +22,7 @@ import { compactParams } from '@/utils/query'
 
 const openCommentPath = '/api/v1/open/list_comments'
 const commentBasePath = '/api/v1/comment'
+const interactionBasePath = '/api/v1/interaction'
 
 /** 评论接口业务错误，code 对应后端统一响应中的业务码。 */
 export class CommentApiError extends Error {
@@ -96,16 +98,26 @@ export async function postCommentUpdate(
   return requireData(response.data, '修改评论失败')
 }
 
-/** 点赞评论；交互模块使用 target_type=3 表示评论。 */
-export async function thumbsUpComment(
-  params: ThumbsUpCommentParams
-): Promise<ThumbsUpCommentResponseData> {
-  const response = await apiClient.post<ThumbsUpCommentResponse>('/api/v1/interaction/like', {
-    target_type: 3,
-    target_id: params.comment_id,
-  })
+/** 点赞或取消点赞；题目和评论共用同一套交互接口。 */
+export async function toggleLike(
+  targetType: LikeTargetType,
+  targetId: string,
+  isLike: boolean
+): Promise<ToggleLikeResult> {
+  const params = { target_type: targetType, target_id: targetId.trim() }
 
-  return requireData(response.data, '点赞评论失败')
+  if (!params.target_id) {
+    throw new CommentApiError(400, '点赞目标不能为空')
+  }
+
+  if (isLike) {
+    const response = await apiClient.post<LikeResponse>(`${interactionBasePath}/like`, params)
+    return requireData(response.data, '点赞失败')
+  }
+
+  const response = await apiClient.post<UnlikeResponse>(`${interactionBasePath}/unlike`, params)
+  const data = requireData(response.data, '取消点赞失败')
+  return { liked: false, count: data.count }
 }
 
 /** 评论模块 API 聚合对象。 */
@@ -115,5 +127,5 @@ export const commentApi: CommentApiService = {
   postCommentReply,
   postCommentDelete,
   postCommentUpdate,
-  thumbsUpComment,
+  toggleLike,
 }

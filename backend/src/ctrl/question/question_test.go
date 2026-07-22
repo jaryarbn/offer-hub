@@ -17,7 +17,9 @@ import (
 type questionServiceStub struct {
 	req          model.GetAllQuestionListReq
 	listReq      model.ListQuestionReq
+	listUserID   string
 	metaReq      model.ListQuestionMetaReq
+	metaUserID   string
 	metaResp     model.ListQuestionMetaResp
 	detailReq    model.GetQuestionDetailReq
 	detail       model.QuestionDetail
@@ -39,8 +41,10 @@ func (stub *questionServiceStub) GetAllQuestionList(
 func (stub *questionServiceStub) ListQuestionsMeta(
 	_ context.Context,
 	req model.ListQuestionMetaReq,
+	userID string,
 ) (model.ListQuestionMetaResp, error) {
 	stub.metaReq = req
+	stub.metaUserID = userID
 	return stub.metaResp, nil
 }
 
@@ -66,8 +70,10 @@ func (stub *questionServiceStub) GetHotQuestions(
 func (stub *questionServiceStub) ListQuestions(
 	_ context.Context,
 	req model.ListQuestionReq,
+	userID string,
 ) (model.ListQuestionResponseData, error) {
 	stub.listReq = req
+	stub.listUserID = userID
 	return model.ListQuestionResponseData{
 		List: make([]model.OneQuestion, 0),
 	}, nil
@@ -85,6 +91,7 @@ func TestListQuestionsBindsQueryAndAppliesDefaults(t *testing.T) {
 		"/api/v1/question/list?bank_id=bank-1&keyword=Go&difficulty=2&tags=Go&tags=%E5%B9%B6%E5%8F%91&job_name=%E5%90%8E%E7%AB%AF%E5%BC%80%E5%8F%91&user_tag=1",
 		nil,
 	)
+	request.Header.Set("user_id", "user-1")
 	response := httptest.NewRecorder()
 	engine.ServeHTTP(response, request)
 
@@ -98,6 +105,9 @@ func TestListQuestionsBindsQueryAndAppliesDefaults(t *testing.T) {
 	}
 	if !reflect.DeepEqual(stub.listReq, wantReq) {
 		t.Fatalf("bound request = %#v, want %#v", stub.listReq, wantReq)
+	}
+	if stub.listUserID != "user-1" {
+		t.Fatalf("service userID = %q, want user-1", stub.listUserID)
 	}
 
 	var body model.ListQuestionResp
@@ -130,6 +140,7 @@ func TestListQuestionsMetaBindsQueryAndReturnsMinimalItems(t *testing.T) {
 		"/api/v1/question/meta/list?bank_id=bank-1&keyword=Go&difficulty=2&tags=Go&tags=%E5%B9%B6%E5%8F%91&job_name=%E5%90%8E%E7%AB%AF%E5%BC%80%E5%8F%91&user_tag=1&sort_by=dislike_count&sort_order=desc&page=2&page_size=5",
 		nil,
 	)
+	request.Header.Set("user_id", "user-2")
 	response := httptest.NewRecorder()
 	engine.ServeHTTP(response, request)
 
@@ -143,6 +154,9 @@ func TestListQuestionsMetaBindsQueryAndReturnsMinimalItems(t *testing.T) {
 	}
 	if !reflect.DeepEqual(stub.metaReq, wantReq) {
 		t.Fatalf("bound request = %#v, want %#v", stub.metaReq, wantReq)
+	}
+	if stub.metaUserID != "user-2" {
+		t.Fatalf("service userID = %q, want user-2", stub.metaUserID)
 	}
 	wantBody := `{"code":0,"msg":"success","data":{"total":1,"list":[{"question_id":"question-1","title":"Go 并发"}]}}`
 	if response.Body.String() != wantBody {

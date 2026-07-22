@@ -39,8 +39,9 @@ const (
 func (service *QuestionService) ListQuestions(
 	ctx context.Context,
 	req model.ListQuestionReq,
+	userID string,
 ) (model.ListQuestionResponseData, error) {
-	records, total, err := service.data.FilterQuestions(ctx, toQuestionFilter(req))
+	records, total, err := service.data.FilterQuestions(ctx, toQuestionFilter(req, userID))
 	if err != nil {
 		return model.ListQuestionResponseData{}, fmt.Errorf("filter questions: %w", err)
 	}
@@ -59,8 +60,9 @@ func (service *QuestionService) ListQuestions(
 func (service *QuestionService) ListQuestionsMeta(
 	ctx context.Context,
 	req model.ListQuestionMetaReq,
+	userID string,
 ) (model.ListQuestionMetaResp, error) {
-	records, total, err := service.data.FilterQuestions(ctx, toQuestionFilter(req))
+	records, total, err := service.data.FilterQuestions(ctx, toQuestionFilter(req, userID))
 	if err != nil {
 		return model.ListQuestionMetaResp{}, fmt.Errorf("filter question metadata: %w", err)
 	}
@@ -164,13 +166,15 @@ func toOneQuestion(record data.QuestionRecord, content string) model.OneQuestion
 	}
 }
 
-func toQuestionFilter(req model.ListQuestionReq) data.QuestionFilter {
+func toQuestionFilter(req model.ListQuestionReq, userID string) data.QuestionFilter {
 	return data.QuestionFilter{
 		BankID:     req.BankID,
 		Keyword:    req.Keyword,
 		Difficulty: req.Difficulty,
 		Tags:       req.Tags,
 		JobName:    req.JobName,
+		UserID:     strings.TrimSpace(userID),
+		UserTag:    req.UserTag,
 		SortBy:     req.SortBy,
 		SortOrder:  req.SortOrder,
 		Page:       req.Page,

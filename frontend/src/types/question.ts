@@ -4,6 +4,9 @@ export type QuestionSortBy = 'create_time' | 'view_count' | 'thumbs_up_count' | 
 
 export type SortOrder = 'asc' | 'desc'
 
+/** 题目掌握状态：0 未标记，1 已掌握，2 晚点再刷，3 未掌握。 */
+export type QuestionTag = 0 | 1 | 2 | 3
+
 /** GET /api/v1/question/all/list 查询参数。 */
 export interface GetQuestionBankSeriesParams {
   job_name?: string
@@ -15,7 +18,7 @@ export interface ListQuestionParams {
   difficulty?: number
   tags?: string[]
   job_name?: string
-  user_tag?: number
+  user_tag?: QuestionTag
   sort_by?: QuestionSortBy
   sort_order?: SortOrder
   page?: number
@@ -52,7 +55,7 @@ export interface Question {
   thumbs_up_count: number
   dislike_count: number
   order: number
-  user_tag: number
+  user_tag: QuestionTag
   user_liked: boolean
   create_time: string
   update_time: string
@@ -116,8 +119,15 @@ export interface GetHotQuestionListResponseData {
   list: HotQuestion[]
 }
 
+/** POST /api/v1/safe/tag_question 请求体。 */
+export interface TagQuestionParams {
+  question_id: string
+  tag: QuestionTag
+}
+
 export type GetQuestionBankSeriesResponse = ApiResponse<QuestionBankGroup[]>
 export type ListQuestionResponse = ApiResponse<ListQuestionResponseData>
 export type ListQuestionMetaResponse = ApiResponse<ListQuestionMetaResponseData>
 export type GetQuestionDetailResponse = ApiResponse<QuestionDetail>
 export type GetHotQuestionListResponse = ApiResponse<GetHotQuestionListResponseData>
+export type TagQuestionResponse = ApiResponse<null>

@@ -5,6 +5,9 @@ export const TargetType = {
   COMMENT: 3,
 } as const
 
+/** 点赞接口支持的目标类型：1 题目，3 评论。 */
+export type LikeTargetType = typeof TargetType.QUESTION | typeof TargetType.COMMENT
+
 /** GET /api/v1/open/list_comments 查询参数。 */
 export interface ListCommentsParams {
   /** 1 题目，2 面经。 */
@@ -104,20 +107,37 @@ export interface UpdateCommentResponse {
   data: UpdateCommentResponseData | null
 }
 
-/** 评论点赞业务参数，service 会映射为 interaction 接口的 target_type=3。 */
-export interface ThumbsUpCommentParams {
-  comment_id: string
+/** POST /api/v1/interaction/like、unlike 共用的请求体。 */
+export interface ToggleLikeParams {
+  target_type: LikeTargetType
+  target_id: string
 }
 
-export interface ThumbsUpCommentResponseData {
+export interface LikeResponseData {
   liked: boolean
   count: number
 }
 
-export interface ThumbsUpCommentResponse {
+export interface UnlikeResponseData {
+  count: number
+}
+
+export interface LikeResponse {
   code: number
   msg: string
-  data: ThumbsUpCommentResponseData | null
+  data: LikeResponseData | null
+}
+
+export interface UnlikeResponse {
+  code: number
+  msg: string
+  data: UnlikeResponseData | null
+}
+
+/** 前端统一的点赞切换结果；取消点赞时 service 补充 liked=false。 */
+export interface ToggleLikeResult {
+  liked: boolean
+  count: number
 }
 
 /** 评论模块的前端业务方法；发表评论与回复共用同一后端路径。 */
@@ -127,5 +147,9 @@ export interface CommentApiService {
   postCommentReply(params: ReplyCommentParams): Promise<AddCommentResponseData>
   postCommentDelete(params: DeleteCommentParams): Promise<DeleteCommentResponse>
   postCommentUpdate(params: UpdateCommentParams): Promise<UpdateCommentResponseData>
-  thumbsUpComment(params: ThumbsUpCommentParams): Promise<ThumbsUpCommentResponseData>
+  toggleLike(
+    targetType: LikeTargetType,
+    targetId: string,
+    isLike: boolean
+  ): Promise<ToggleLikeResult>
 }

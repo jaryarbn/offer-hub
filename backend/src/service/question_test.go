@@ -138,13 +138,13 @@ func TestQuestionServiceListQuestions(t *testing.T) {
 		SortBy: "view_count", SortOrder: "desc", Page: 3, PageSize: 10,
 	}
 
-	got, err := questionService.ListQuestions(context.Background(), req)
+	got, err := questionService.ListQuestions(context.Background(), req, "user-1")
 	if err != nil {
 		t.Fatalf("ListQuestions() error = %v", err)
 	}
 	wantFilter := data.QuestionFilter{
 		BankID: "bank-1", Keyword: "Go", Difficulty: 2,
-		Tags: []string{"Go", "并发"}, JobName: "后端开发",
+		Tags: []string{"Go", "并发"}, JobName: "后端开发", UserID: "user-1", UserTag: 2,
 		SortBy: "view_count", SortOrder: "desc", Page: 3, PageSize: 10,
 	}
 	if !reflect.DeepEqual(stub.filter, wantFilter) {
@@ -171,7 +171,7 @@ func TestQuestionServiceListQuestions(t *testing.T) {
 func TestQuestionServiceListQuestionsReturnsEmptyArray(t *testing.T) {
 	questionService := NewQuestionService(&questionDataStub{})
 
-	got, err := questionService.ListQuestions(context.Background(), model.ListQuestionReq{})
+	got, err := questionService.ListQuestions(context.Background(), model.ListQuestionReq{}, "")
 	if err != nil {
 		t.Fatalf("ListQuestions() error = %v", err)
 	}
@@ -195,13 +195,13 @@ func TestQuestionServiceListQuestionsMetaUsesSharedFilter(t *testing.T) {
 		SortBy: "dislike_count", SortOrder: "desc", Page: 2, PageSize: 5,
 	}
 
-	got, err := questionService.ListQuestionsMeta(context.Background(), req)
+	got, err := questionService.ListQuestionsMeta(context.Background(), req, "user-2")
 	if err != nil {
 		t.Fatalf("ListQuestionsMeta() error = %v", err)
 	}
 	wantFilter := data.QuestionFilter{
 		BankID: "bank-1", Keyword: "Go", Difficulty: 2,
-		Tags: []string{"Go", "并发"}, JobName: "后端开发",
+		Tags: []string{"Go", "并发"}, JobName: "后端开发", UserID: "user-2", UserTag: 1,
 		SortBy: "dislike_count", SortOrder: "desc", Page: 2, PageSize: 5,
 	}
 	if !reflect.DeepEqual(stub.filter, wantFilter) {
@@ -226,7 +226,7 @@ func TestQuestionServiceListQuestionsMetaUsesSharedFilter(t *testing.T) {
 func TestQuestionServiceListQuestionsMetaReturnsEmptyArray(t *testing.T) {
 	questionService := NewQuestionService(&questionDataStub{})
 
-	got, err := questionService.ListQuestionsMeta(context.Background(), model.ListQuestionMetaReq{})
+	got, err := questionService.ListQuestionsMeta(context.Background(), model.ListQuestionMetaReq{}, "")
 	if err != nil {
 		t.Fatalf("ListQuestionsMeta() error = %v", err)
 	}

@@ -5,6 +5,7 @@ import { BankQuestionSidebar } from '@/components/BankQuestionSidebar'
 import { Header } from '@/components/Header'
 import { Comments } from '@/components/comment/Comments'
 import { DetailContent } from '@/components/detail/DetailContent'
+import { DetailHeader } from '@/components/detail/DetailHeader'
 import { Button } from '@/components/ui/button'
 import { useQuestionDetail } from '@/hooks/useQuestionQueries'
 import { TargetType } from '@/types/comment'
@@ -53,24 +54,7 @@ export function QuestionDetail() {
         ) : null}
 
         <article className="min-w-0 lg:border-l lg:border-border lg:pl-10">
-          <p className="font-mono text-xs text-muted-foreground">{question.question_id}</p>
-          <h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">
-            {question.title}
-          </h1>
-
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <span className="rounded-sm bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
-              {getDifficultyLabel(question.difficulty)}
-            </span>
-            {question.tags.map(tag => (
-              <span
-                key={tag}
-                className="rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+          <DetailHeader question={question} />
 
           <div className="mt-8 border-t border-border pt-4 text-base">
             <DetailContent content={question.content} />
@@ -157,8 +141,4 @@ function QuestionDetailSkeleton() {
       </div>
     </QuestionDetailLayout>
   )
-}
-
-function getDifficultyLabel(difficulty: number): string {
-  return ['', '简单', '中等', '困难'][difficulty] ?? `难度 ${difficulty}`
 }

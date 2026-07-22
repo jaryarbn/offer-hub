@@ -8,10 +8,12 @@ import { z } from 'zod'
 import { HotContent } from '@/components/HotContent'
 import { Header } from '@/components/Header'
 import { QUESTION_PAGE_SIZE, QuestionListContent } from '@/components/QuestionListContent'
+import { useLogin } from '@/components/provider/LoginProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useQuestionList } from '@/hooks/useQuestionQueries'
 import { cn } from '@/lib/utils'
+import type { QuestionTag } from '@/types/question'
 
 const difficultyOptions = [
   { label: '全部', value: undefined },
@@ -20,6 +22,13 @@ const difficultyOptions = [
   { label: '困难', value: 3 },
 ] as const
 
+const userTagOptions: Array<{ label: string; value: QuestionTag | undefined }> = [
+  { label: '全部', value: undefined },
+  { label: '已掌握', value: 1 },
+  { label: '晚点再刷', value: 2 },
+  { label: '未掌握', value: 3 },
+]
+
 const searchSchema = z.object({
   keyword: z.string().trim().max(80, '关键词不能超过 80 个字符'),
 })
@@ -27,16 +36,19 @@ const searchSchema = z.object({
 type SearchValues = z.infer<typeof searchSchema>
 
 export function Questions() {
+  const { isLoggedIn } = useLogin()
   const [searchParams] = useSearchParams()
   const bankId = searchParams.get('bank_id')?.trim() || undefined
   const activeIndex = searchParams.get('activeIndex')
   const [difficulty, setDifficulty] = useState<number | undefined>()
+  const [userTag, setUserTag] = useState<QuestionTag | undefined>()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const { data, isPending, isFetching, isError, error, refetch } = useQuestionList({
     bank_id: bankId,
     difficulty,
     keyword: keyword || undefined,
+    user_tag: isLoggedIn ? userTag : undefined,
     page,
     page_size: QUESTION_PAGE_SIZE,
   })
@@ -51,6 +63,12 @@ export function Questions() {
 
   useEffect(() => setPage(1), [bankId])
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setUserTag(undefined)
+    }
+  }, [isLoggedIn])
+
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / QUESTION_PAGE_SIZE)
   const collectionUrl = activeIndex
@@ -64,6 +82,11 @@ export function Questions() {
 
   const selectDifficulty = (nextDifficulty: number | undefined) => {
     setDifficulty(nextDifficulty)
+    setPage(1)
+  }
+
+  const selectUserTag = (nextUserTag: QuestionTag | undefined) => {
+    setUserTag(nextUserTag)
     setPage(1)
   }
 
@@ -90,30 +113,61 @@ export function Questions() {
         </div>
 
         <section aria-label="题目筛选" className="border-y border-border py-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <span className="mb-2 block text-xs font-medium text-muted-foreground">难度</span>
-              <div className="inline-flex rounded-md bg-muted p-1" aria-label="按难度筛选">
-                {difficultyOptions.map(option => (
-                  <button
-                    key={option.label}
-                    type="button"
-                    className={cn(
-                      'h-8 rounded-sm px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-                      difficulty === option.value
-                        ? 'bg-background font-medium text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                    aria-pressed={difficulty === option.value}
-                    onClick={() => selectDifficulty(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+              <div>
+                <span className="mb-2 block text-xs font-medium text-muted-foreground">难度</span>
+                <div className="inline-flex rounded-md bg-muted p-1" aria-label="按难度筛选">
+                  {difficultyOptions.map(option => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      className={cn(
+                        'h-8 rounded-sm px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+                        difficulty === option.value
+                          ? 'bg-background font-medium text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      aria-pressed={difficulty === option.value}
+                      onClick={() => selectDifficulty(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {isLoggedIn ? (
+                <div>
+                  <span className="mb-2 block text-xs font-medium text-muted-foreground">
+                    掌握状态
+                  </span>
+                  <div
+                    className="inline-flex max-w-full overflow-x-auto rounded-md bg-muted p-1"
+                    aria-label="按掌握状态筛选"
+                  >
+                    {userTagOptions.map(option => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        className={cn(
+                          'h-8 shrink-0 rounded-sm px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+                          userTag === option.value
+                            ? 'bg-background font-medium text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        aria-pressed={userTag === option.value}
+                        onClick={() => selectUserTag(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            <form className="w-full max-w-md" onSubmit={handleSubmit(submitSearch)}>
+            <form className="w-full max-w-md lg:max-w-sm" onSubmit={handleSubmit(submitSearch)}>
               <label
                 htmlFor="question-keyword"
                 className="mb-2 block text-xs font-medium text-muted-foreground"

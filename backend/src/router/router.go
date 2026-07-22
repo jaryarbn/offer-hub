@@ -10,6 +10,7 @@ import (
 	"offer-hub/backend/src/ctrl"
 	authctrl "offer-hub/backend/src/ctrl/auth"
 	commentctrl "offer-hub/backend/src/ctrl/comment"
+	interactionctrl "offer-hub/backend/src/ctrl/interaction"
 	questionctrl "offer-hub/backend/src/ctrl/question"
 	ctrltools "offer-hub/backend/src/ctrl/tools"
 	userinfoctrl "offer-hub/backend/src/ctrl/user_info"
@@ -70,5 +71,16 @@ func RegisterRouter(engine *gin.Engine) error {
 	openRouter := engine.Group("/api/v1/open")
 	openRouter.Use(ctrltools.SoftJWTAuthMiddleware())
 	openRouter.GET("/list_comments", commentController.ListComments)
+
+	interactionService := service.NewInteractionService(initializedData)
+	interactionController := interactionctrl.NewController(interactionService)
+	interactionRouter := engine.Group("/api/v1/interaction")
+	interactionRouter.Use(ctrltools.JWTAuthMiddleware())
+	interactionRouter.POST("/like", interactionController.Like)
+	interactionRouter.POST("/unlike", interactionController.Unlike)
+
+	safeRouter := engine.Group("/api/v1/safe")
+	safeRouter.Use(ctrltools.JWTAuthMiddleware())
+	safeRouter.POST("/tag_question", interactionController.TagQuestion)
 	return nil
 }

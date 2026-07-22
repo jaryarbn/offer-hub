@@ -60,12 +60,20 @@ export function LoginProvider({ children }: LoginProviderProps) {
     [queryClient]
   )
 
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     sessionVersionRef.current += 1
     localStorage.removeItem(TOKEN_KEY)
-    setToken(null)
-    setUserInfo(null)
-  }, [])
+
+    if (mountedRef.current) {
+      setToken(null)
+      setUserInfo(null)
+    }
+
+    // 详情响应包含登录用户的点赞和掌握状态，清空后由活跃查询以游客身份重新拉取。
+    void queryClient.resetQueries({ queryKey: queryKeys.details })
+  }, [queryClient])
+
+  const logout = clearSession
 
   const setShowLoginDialog = useCallback((show: boolean) => {
     setShowLoginDialogState(show)
@@ -75,11 +83,7 @@ export function LoginProvider({ children }: LoginProviderProps) {
     const currentToken = localStorage.getItem(TOKEN_KEY)
 
     if (!currentToken) {
-      sessionVersionRef.current += 1
-      if (mountedRef.current) {
-        setToken(null)
-        setUserInfo(null)
-      }
+      clearSession()
       return
     }
 
@@ -102,15 +106,12 @@ export function LoginProvider({ children }: LoginProviderProps) {
         sessionVersionRef.current === requestVersion &&
         localStorage.getItem(TOKEN_KEY) === currentToken
       ) {
-        sessionVersionRef.current += 1
-        localStorage.removeItem(TOKEN_KEY)
-        setToken(null)
-        setUserInfo(null)
+        clearSession()
       }
 
       throw error
     }
-  }, [])
+  }, [clearSession])
 
   useEffect(() => {
     mountedRef.current = true

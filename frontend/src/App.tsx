@@ -1,7 +1,8 @@
 import { Route, Routes } from 'react-router-dom'
 
 import { AppProvider } from '@/components/provider/app-provider'
-import { HomePage } from '@/pages/home-page'
+import { HomePage } from '@/pages/Home'
+import { HotContent as HotContentPage } from '@/pages/HotContent'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { QuestionCollections } from '@/pages/QuestionCollections'
 import { QuestionDetail } from '@/pages/QuestionDetail'
@@ -12,6 +13,7 @@ export default function App() {
     <AppProvider>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/hot" element={<HotContentPage />} />
         <Route path="/questions-collection" element={<QuestionCollections />} />
         <Route path="/questions" element={<Questions />} />
         <Route path="/questions/:question_id" element={<QuestionDetail />} />

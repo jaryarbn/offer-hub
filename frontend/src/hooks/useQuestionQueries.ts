@@ -23,7 +23,8 @@ export const queryKeys = {
   list: (filters: QuestionFilters) => [...queryKeys.lists, filters] as const,
   details: ['questions', 'detail'] as const,
   detail: (questionId: string) => [...queryKeys.details, questionId] as const,
-  hot: ['questions', 'hot'] as const,
+  hot: (limit: number, jobName?: string) =>
+    [...queryKeys.all, 'hot', limit, jobName ?? 'all'] as const,
 }
 
 /** 获取按职位方向和系列分组的题库列表。 */
@@ -97,12 +98,19 @@ export function useBankQuestionList(
 }
 
 /** 获取后端按 hot_degree 降序返回的热门题目。 */
-export function useHotQuestions(): UseQueryResult<
-  GetHotQuestionListResponseData,
-  QuestionApiError
-> {
+export function useHotQuestions(
+  limit = 10,
+  jobName?: string
+): UseQueryResult<GetHotQuestionListResponseData, QuestionApiError> {
+  const normalizedLimit = Number.isInteger(limit) && limit > 0 ? limit : 10
+  const normalizedJobName = jobName?.trim() || undefined
+
   return useQuery<GetHotQuestionListResponseData, QuestionApiError>({
-    queryKey: queryKeys.hot,
-    queryFn: () => questionApi.getHotQuestionList(),
+    queryKey: queryKeys.hot(normalizedLimit, normalizedJobName),
+    queryFn: () =>
+      questionApi.getHotQuestionList({
+        limit: normalizedLimit,
+        job_name: normalizedJobName,
+      }),
   })
 }

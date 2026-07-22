@@ -45,16 +45,21 @@ func RegisterRouter(engine *gin.Engine) error {
 	engine.POST("/auth/login", authRateLimit, authController.Login)
 	engine.POST("/auth/logout", ctrltools.JWTAuthMiddleware(), authController.Logout)
 
+	apiV1Router := engine.Group("/api/v1")
+	apiV1Router.Use(
+		ctrltools.SoftJWTAuthMiddleware(),
+		ctrltools.RateLimitMiddleware(&config.Conf.RateLimit),
+	)
+
 	userInfoService := service.NewUserInfoService(initializedData)
 	userInfoController := userinfoctrl.NewController(userInfoService)
-	userInfoRouter := engine.Group("/api/v1/user_info")
+	userInfoRouter := apiV1Router.Group("/user_info")
 	userInfoRouter.Use(ctrltools.JWTAuthMiddleware())
 	userInfoRouter.GET("/get_user_info", userInfoController.GetUserInfo)
 
 	questionService := service.NewQuestionService(initializedData)
 	questionController := questionctrl.NewController(questionService)
-	questionRouter := engine.Group("/api/v1/question")
-	questionRouter.Use(ctrltools.SoftJWTAuthMiddleware())
+	questionRouter := apiV1Router.Group("/question")
 	questionRouter.GET("/all/list", questionController.GetQuestionBankSeries)
 	questionRouter.GET("/list", questionController.ListQuestions)
 	questionRouter.GET("/meta/list", questionController.ListQuestionMeta)
@@ -63,24 +68,23 @@ func RegisterRouter(engine *gin.Engine) error {
 
 	commentService := service.NewCommentService(initializedData)
 	commentController := commentctrl.NewController(commentService)
-	commentRouter := engine.Group("/api/v1/comment")
+	commentRouter := apiV1Router.Group("/comment")
 	commentRouter.Use(ctrltools.JWTAuthMiddleware())
 	commentRouter.POST("/add", commentController.AddComment)
 	commentRouter.POST("/delete", commentController.DeleteComment)
 	commentRouter.POST("/update", commentController.UpdateComment)
 
-	openRouter := engine.Group("/api/v1/open")
-	openRouter.Use(ctrltools.SoftJWTAuthMiddleware())
+	openRouter := apiV1Router.Group("/open")
 	openRouter.GET("/list_comments", commentController.ListComments)
 
 	interactionService := service.NewInteractionService(initializedData)
 	interactionController := interactionctrl.NewController(interactionService)
-	interactionRouter := engine.Group("/api/v1/interaction")
+	interactionRouter := apiV1Router.Group("/interaction")
 	interactionRouter.Use(ctrltools.JWTAuthMiddleware())
 	interactionRouter.POST("/like", interactionController.Like)
 	interactionRouter.POST("/unlike", interactionController.Unlike)
 
-	safeRouter := engine.Group("/api/v1/safe")
+	safeRouter := apiV1Router.Group("/safe")
 	safeRouter.Use(ctrltools.JWTAuthMiddleware())
 	safeRouter.POST("/tag_question", interactionController.TagQuestion)
 	return nil

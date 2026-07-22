@@ -12,6 +12,8 @@ import (
 
 const userInfoTable = "t_user_info"
 
+const UserStatusActive = 1
+
 var userInfoColumns = []string{
 	"user_id",
 	"username",

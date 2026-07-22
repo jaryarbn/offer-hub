@@ -153,6 +153,15 @@ func TestLoginReturnsInvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestLoginReturnsAccountUnavailable(t *testing.T) {
+	stub := &authServiceStub{loginErr: backendservice.ErrAccountUnavailable}
+	response := performLoginRequest(stub, `{"username":"testuser","password":"123456"}`)
+
+	if response.Body.String() != `{"code":500,"msg":"账号不可用","data":null}` {
+		t.Fatalf("response body = %s", response.Body.String())
+	}
+}
+
 func TestLoginDoesNotExposeInternalErrors(t *testing.T) {
 	stub := &authServiceStub{loginErr: errors.New("database connection contains internal details")}
 	response := performLoginRequest(stub, `{"username":"testuser","password":"123456"}`)

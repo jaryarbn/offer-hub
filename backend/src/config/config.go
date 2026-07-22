@@ -13,12 +13,13 @@ const defaultEnvironment = "test"
 var Conf *TomlConfig
 
 type TomlConfig struct {
-	Common    CommonConfig    `toml:"COMMON"`
-	MySQL     MySQLConfig     `toml:"MySQL"`
-	MongoDB   MongoDBConfig   `toml:"MongoDB"`
-	Redis     RedisConfig     `toml:"Redis"`
-	JWT       JWTConfig       `toml:"JWT"`
-	RateLimit RateLimitConfig `toml:"RateLimit"`
+	Common        CommonConfig    `toml:"COMMON"`
+	MySQL         MySQLConfig     `toml:"MySQL"`
+	MongoDB       MongoDBConfig   `toml:"MongoDB"`
+	Redis         RedisConfig     `toml:"Redis"`
+	JWT           JWTConfig       `toml:"JWT"`
+	RateLimit     RateLimitConfig `toml:"RateLimit"`
+	AuthRateLimit RateLimitConfig `toml:"AuthRateLimit"`
 }
 
 type CommonConfig struct {

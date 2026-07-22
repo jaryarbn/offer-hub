@@ -20,6 +20,7 @@ const (
 	usernameExistsMessage        = "用户名已存在"
 	loginSuccessMessage          = "登录成功"
 	invalidCredentialsMessage    = "用户名或密码错误"
+	accountUnavailableMessage    = "账号不可用"
 	logoutSuccessMessage         = "success"
 	logoutConfirmationMessage    = "登出成功"
 	invalidTokenMessage          = "token 无效或已过期"
@@ -65,6 +66,8 @@ func (controller *Controller) Login(ctx *gin.Context) {
 		respondLoginError(ctx, 400, invalidRegisterParamsMessage)
 	case errors.Is(err, service.ErrInvalidCredentials):
 		respondLoginError(ctx, 500, invalidCredentialsMessage)
+	case errors.Is(err, service.ErrAccountUnavailable):
+		respondLoginError(ctx, 500, accountUnavailableMessage)
 	default:
 		log.Printf("login user: %v", err)
 		respondLoginError(ctx, 500, internalServerErrorMessage)

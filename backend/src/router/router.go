@@ -40,8 +40,9 @@ func RegisterRouter(engine *gin.Engine) error {
 		return fmt.Errorf("initialize auth service: %w", err)
 	}
 	authController := authctrl.NewController(authService)
-	engine.POST("/auth/register", authController.Register)
-	engine.POST("/auth/login", authController.Login)
+	authRateLimit := ctrltools.AuthRateLimitMiddleware()
+	engine.POST("/auth/register", authRateLimit, authController.Register)
+	engine.POST("/auth/login", authRateLimit, authController.Login)
 	engine.POST("/auth/logout", ctrltools.JWTAuthMiddleware(), authController.Logout)
 
 	userInfoService := service.NewUserInfoService(initializedData)

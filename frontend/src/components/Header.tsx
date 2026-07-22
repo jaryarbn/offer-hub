@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { BookOpen, ChevronDown, LoaderCircle, LogOut } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import { useLogin } from '@/components/provider/LoginProvider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -13,7 +13,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 import { postAuthLogout } from '@/services/auth'
+
+const navigationItems = [
+  { label: '首页', to: '/' },
+  { label: '题库', to: '/questions' },
+]
 
 export interface HeaderProps {
   sectionLabel?: string
@@ -21,6 +27,7 @@ export interface HeaderProps {
 }
 
 export function Header({ sectionLabel, action }: HeaderProps) {
+  const { pathname } = useLocation()
   const { isLoggedIn, userInfo, logout, setShowLoginDialog } = useLogin()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
@@ -56,7 +63,7 @@ export function Header({ sectionLabel, action }: HeaderProps) {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <Link
             to="/"
             className="flex shrink-0 items-center gap-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -67,10 +74,34 @@ export function Header({ sectionLabel, action }: HeaderProps) {
             <span className="hidden text-sm font-semibold sm:inline">Offer Hub</span>
           </Link>
 
+          <nav aria-label="主导航" className="shrink-0">
+            <ul className="flex h-14 items-center gap-1">
+              {navigationItems.map(item => (
+                <li key={item.to} className="h-full">
+                  <Link
+                    to={item.to}
+                    aria-current={isNavigationItemActive(pathname, item.to) ? 'page' : undefined}
+                    className={cn(
+                      'relative flex h-full shrink-0 items-center whitespace-nowrap px-2 text-sm font-medium outline-none transition-colors',
+                      'hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                      isNavigationItemActive(pathname, item.to)
+                        ? 'text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-foreground'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
           {sectionLabel && (
             <>
-              <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
-              <span className="truncate text-sm text-muted-foreground">{sectionLabel}</span>
+              <span className="hidden h-4 w-px bg-border lg:block" aria-hidden="true" />
+              <span className="hidden truncate text-sm text-muted-foreground lg:inline">
+                {sectionLabel}
+              </span>
             </>
           )}
         </div>
@@ -78,8 +109,8 @@ export function Header({ sectionLabel, action }: HeaderProps) {
         <div className="flex shrink-0 items-center gap-3">
           {action && (
             <>
-              <div className="text-sm">{action}</div>
-              <span className="h-4 w-px bg-border" aria-hidden="true" />
+              <div className="hidden text-sm sm:block">{action}</div>
+              <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
             </>
           )}
 
@@ -136,6 +167,18 @@ export function Header({ sectionLabel, action }: HeaderProps) {
         </div>
       </div>
     </header>
+  )
+}
+
+function isNavigationItemActive(pathname: string, targetPath: string): boolean {
+  if (targetPath === '/') {
+    return pathname === '/'
+  }
+
+  return (
+    pathname === targetPath ||
+    pathname.startsWith(`${targetPath}/`) ||
+    (targetPath === '/questions' && pathname === '/questions-collection')
   )
 }
 

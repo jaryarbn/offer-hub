@@ -8,7 +8,7 @@ export function HomePage() {
       <p className="text-sm text-muted-foreground">Offer Hub</p>
       <h1 className="mt-3 text-2xl font-semibold">首页</h1>
       <Button asChild className="mt-6">
-        <Link to="/questions">进入题库</Link>
+        <Link to="/questions-collection">进入题库</Link>
       </Button>
     </main>
   )

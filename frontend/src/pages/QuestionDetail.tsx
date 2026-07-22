@@ -3,9 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 
 import { BankQuestionSidebar } from '@/components/BankQuestionSidebar'
 import { Header } from '@/components/Header'
+import { Comments } from '@/components/comment/Comments'
 import { DetailContent } from '@/components/detail/DetailContent'
 import { Button } from '@/components/ui/button'
 import { useQuestionDetail } from '@/hooks/useQuestionQueries'
+import { TargetType } from '@/types/comment'
 
 export function QuestionDetail() {
   const { question_id: questionId = '' } = useParams<{ question_id: string }>()
@@ -72,6 +74,10 @@ export function QuestionDetail() {
 
           <div className="mt-8 border-t border-border pt-4 text-base">
             <DetailContent content={question.content} />
+          </div>
+
+          <div className="mt-10">
+            <Comments targetType={TargetType.QUESTION} targetId={questionId} />
           </div>
         </article>
       </div>

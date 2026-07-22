@@ -10,6 +10,7 @@ import (
 	"offer-hub/backend/src/ctrl"
 	authctrl "offer-hub/backend/src/ctrl/auth"
 	questionctrl "offer-hub/backend/src/ctrl/question"
+	ctrltools "offer-hub/backend/src/ctrl/tools"
 	userinfoctrl "offer-hub/backend/src/ctrl/user_info"
 	"offer-hub/backend/src/data"
 	"offer-hub/backend/src/service"
@@ -39,15 +40,18 @@ func RegisterRouter(engine *gin.Engine) error {
 	authController := authctrl.NewController(authService)
 	engine.POST("/auth/register", authController.Register)
 	engine.POST("/auth/login", authController.Login)
-	engine.POST("/auth/logout", authController.Logout)
+	engine.POST("/auth/logout", ctrltools.JWTAuthMiddleware(), authController.Logout)
 
 	userInfoService := service.NewUserInfoService(initializedData)
 	userInfoController := userinfoctrl.NewController(userInfoService)
-	engine.GET("/api/v1/user_info/get_user_info", userInfoController.GetUserInfo)
+	userInfoRouter := engine.Group("/api/v1/user_info")
+	userInfoRouter.Use(ctrltools.JWTAuthMiddleware())
+	userInfoRouter.GET("/get_user_info", userInfoController.GetUserInfo)
 
 	questionService := service.NewQuestionService(initializedData)
 	questionController := questionctrl.NewController(questionService)
 	questionRouter := engine.Group("/api/v1/question")
+	questionRouter.Use(ctrltools.SoftJWTAuthMiddleware())
 	questionRouter.GET("/all/list", questionController.GetQuestionBankSeries)
 	questionRouter.GET("/list", questionController.ListQuestions)
 	questionRouter.GET("/meta/list", questionController.ListQuestionMeta)

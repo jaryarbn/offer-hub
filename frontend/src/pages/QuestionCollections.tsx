@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowRight, BookOpen, Layers3, RotateCcw } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { useQuestionBanks } from '@/hooks/useQuestionQueries'
 import { cn } from '@/lib/utils'
@@ -151,16 +152,7 @@ function QuestionBankGroupContent({
 function PageLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <BookOpen className="size-4" aria-hidden="true" />
-          </div>
-          <span className="text-sm font-semibold">Offer Hub</span>
-          <span className="h-4 w-px bg-border" aria-hidden="true" />
-          <span className="text-sm text-muted-foreground">题库分类</span>
-        </div>
-      </header>
+      <Header sectionLabel="题库分类" />
 
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         <div className="mb-7">

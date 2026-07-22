@@ -33,6 +33,7 @@ db = 0
 [JWT]
 secret = "test-secret"
 expire = 24
+token_cache_expire = 24
 enable = true
 
 [RateLimit]
@@ -54,7 +55,7 @@ func TestInitWithExplicitPath(t *testing.T) {
 	if Conf.MySQL.DSN() != "root:1234@tcp(127.0.0.1:3307)/offer_hub?charset=utf8mb4&parseTime=True&loc=Local" {
 		t.Fatalf("unexpected MySQL DSN: %s", Conf.MySQL.DSN())
 	}
-	if !Conf.JWT.Enable || Conf.JWT.Expire != 24 {
+	if !Conf.JWT.Enable || Conf.JWT.Expire != 24 || Conf.JWT.TokenCacheExpire != 24 {
 		t.Fatalf("unexpected JWT config: %+v", Conf.JWT)
 	}
 	if !Conf.RateLimit.Enable || Conf.RateLimit.MaxRequests != 20 {

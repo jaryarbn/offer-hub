@@ -74,6 +74,21 @@ func (data *Data) AddTokenToBlacklist(ctx context.Context, token string, ttl tim
 	return nil
 }
 
+func IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
+	if strings.TrimSpace(token) == "" {
+		return false, errors.New("token is empty")
+	}
+	if redisClient == nil {
+		return false, ErrRedisNotInitialized
+	}
+
+	exists, err := redisClient.Exists(ctx, blacklistKey(token)).Result()
+	if err != nil {
+		return false, fmt.Errorf("read token blacklist: %w", err)
+	}
+	return exists > 0, nil
+}
+
 func blacklistKey(token string) string {
 	return tokenBlacklistPrefix + token
 }

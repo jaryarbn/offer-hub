@@ -1,7 +1,8 @@
-import { AlertCircle, ArrowLeft, BookOpen } from 'lucide-react'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import { BankQuestionSidebar } from '@/components/BankQuestionSidebar'
+import { Header } from '@/components/Header'
 import { QuestionMarkdown } from '@/components/QuestionMarkdown'
 import { Button } from '@/components/ui/button'
 import { useQuestionDetail } from '@/hooks/useQuestionQueries'
@@ -89,17 +90,8 @@ function QuestionDetailLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link
-            to="/"
-            className="flex items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <BookOpen className="size-4" aria-hidden="true" />
-            </span>
-            <span className="text-sm font-semibold">Offer Hub</span>
-          </Link>
+      <Header
+        action={
           <Link
             to={listUrl}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:underline"
@@ -107,8 +99,8 @@ function QuestionDetailLayout({
             <ArrowLeft className="size-4" aria-hidden="true" />
             返回题目列表
           </Link>
-        </div>
-      </header>
+        }
+      />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">{children}</main>
     </div>
   )

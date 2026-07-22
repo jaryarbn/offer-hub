@@ -63,9 +63,10 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	Secret string `toml:"secret"`
-	Expire int    `toml:"expire"`
-	Enable bool   `toml:"enable"`
+	Secret           string `toml:"secret"`
+	Expire           int    `toml:"expire"`
+	TokenCacheExpire int    `toml:"token_cache_expire"`
+	Enable           bool   `toml:"enable"`
 }
 
 type RateLimitConfig struct {

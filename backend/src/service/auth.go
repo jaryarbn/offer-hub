@@ -35,12 +35,13 @@ type AuthData interface {
 }
 
 type AuthService struct {
-	data         AuthData
-	hashPassword func([]byte, int) ([]byte, error)
-	newUserID    func() string
-	jwtSecret    []byte
-	jwtExpire    time.Duration
-	now          func() time.Time
+	data          AuthData
+	hashPassword  func([]byte, int) ([]byte, error)
+	newUserID     func() string
+	jwtSecret     []byte
+	jwtExpire     time.Duration
+	tokenCacheTTL time.Duration
+	now           func() time.Time
 }
 
 func NewAuthService(authData AuthData, jwtConfig config.JWTConfig) (*AuthService, error) {
@@ -53,14 +54,22 @@ func NewAuthService(authData AuthData, jwtConfig config.JWTConfig) (*AuthService
 	if jwtConfig.Expire <= 0 {
 		return nil, errors.New("JWT expiration must be positive")
 	}
+	tokenCacheExpire := jwtConfig.TokenCacheExpire
+	if tokenCacheExpire <= 0 {
+		tokenCacheExpire = jwtConfig.Expire
+	}
+	if tokenCacheExpire < jwtConfig.Expire {
+		return nil, errors.New("JWT token cache expiration must cover token expiration")
+	}
 
 	return &AuthService{
-		data:         authData,
-		hashPassword: bcrypt.GenerateFromPassword,
-		newUserID:    uuid.NewString,
-		jwtSecret:    []byte(jwtConfig.Secret),
-		jwtExpire:    time.Duration(jwtConfig.Expire) * time.Hour,
-		now:          time.Now,
+		data:          authData,
+		hashPassword:  bcrypt.GenerateFromPassword,
+		newUserID:     uuid.NewString,
+		jwtSecret:     []byte(jwtConfig.Secret),
+		jwtExpire:     time.Duration(jwtConfig.Expire) * time.Hour,
+		tokenCacheTTL: time.Duration(tokenCacheExpire) * time.Hour,
+		now:           time.Now,
 	}, nil
 }
 
@@ -194,11 +203,10 @@ func (service *AuthService) Logout(ctx context.Context, tokenString string) erro
 		return ErrInvalidLogoutToken
 	}
 
-	remainingTTL := claims.ExpiresAt.Time.Sub(now)
-	if remainingTTL <= 0 {
+	if claims.ExpiresAt.Time.Sub(now) <= 0 {
 		return ErrInvalidLogoutToken
 	}
-	if err := service.data.AddTokenToBlacklist(ctx, tokenString, remainingTTL); err != nil {
+	if err := service.data.AddTokenToBlacklist(ctx, tokenString, service.tokenCacheTTL); err != nil {
 		return fmt.Errorf("blacklist token: %w", err)
 	}
 	return nil

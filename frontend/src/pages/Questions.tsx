@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { BookOpen, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
 import { HotContent } from '@/components/HotContent'
+import { Header } from '@/components/Header'
 import { QUESTION_PAGE_SIZE, QuestionListContent } from '@/components/QuestionListContent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,25 +69,16 @@ export function Questions() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link
-            to="/"
-            className="flex items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <BookOpen className="size-4" aria-hidden="true" />
-            </span>
-            <span className="text-sm font-semibold">Offer Hub</span>
-          </Link>
+      <Header
+        action={
           <Link
             to={collectionUrl}
             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
             返回题库分类
           </Link>
-        </div>
-      </header>
+        }
+      />
 
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         <div className="mb-6">

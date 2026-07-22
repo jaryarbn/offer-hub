@@ -45,3 +45,12 @@ func TestAddTokenToBlacklistValidatesBeforeRedisAccess(t *testing.T) {
 		t.Fatalf("uninitialized Redis error = %v, want ErrRedisNotInitialized", err)
 	}
 }
+
+func TestIsTokenBlacklistedValidatesBeforeRedisAccess(t *testing.T) {
+	if _, err := IsTokenBlacklisted(context.Background(), ""); err == nil {
+		t.Fatal("empty token error = nil")
+	}
+	if _, err := IsTokenBlacklisted(context.Background(), "token"); !errors.Is(err, ErrRedisNotInitialized) {
+		t.Fatalf("uninitialized Redis error = %v, want ErrRedisNotInitialized", err)
+	}
+}

@@ -56,8 +56,9 @@ func (stub *authDataStub) AddTokenToBlacklist(_ context.Context, token string, t
 func newAuthServiceForTest(t *testing.T, stub AuthData) *AuthService {
 	t.Helper()
 	authService, err := NewAuthService(stub, config.JWTConfig{
-		Secret: "test-jwt-secret",
-		Expire: 24,
+		Secret:           "test-jwt-secret",
+		Expire:           24,
+		TokenCacheExpire: 48,
 	})
 	if err != nil {
 		t.Fatalf("NewAuthService() error = %v", err)
@@ -299,9 +300,16 @@ func TestNewAuthServiceRejectsInvalidJWTConfig(t *testing.T) {
 	if _, err := NewAuthService(stub, config.JWTConfig{Secret: "secret", Expire: 0}); err == nil {
 		t.Fatal("NewAuthService() with zero expiration error = nil")
 	}
+	if _, err := NewAuthService(stub, config.JWTConfig{
+		Secret:           "secret",
+		Expire:           24,
+		TokenCacheExpire: 12,
+	}); err == nil {
+		t.Fatal("NewAuthService() with token cache shorter than token expiration error = nil")
+	}
 }
 
-func TestAuthServiceLogoutBlacklistsTokenWithRemainingTTL(t *testing.T) {
+func TestAuthServiceLogoutUsesConfiguredTokenCacheTTL(t *testing.T) {
 	stub := &authDataStub{}
 	authService := newAuthServiceForTest(t, stub)
 	now := time.Date(2030, time.January, 2, 3, 4, 5, 0, time.UTC)
@@ -317,8 +325,8 @@ func TestAuthServiceLogoutBlacklistsTokenWithRemainingTTL(t *testing.T) {
 	if stub.blacklistToken != token {
 		t.Fatalf("blacklisted token = %q, want generated token", stub.blacklistToken)
 	}
-	if stub.blacklistTTL != 24*time.Hour {
-		t.Fatalf("blacklist TTL = %s, want 24h", stub.blacklistTTL)
+	if stub.blacklistTTL != 48*time.Hour {
+		t.Fatalf("blacklist TTL = %s, want 48h", stub.blacklistTTL)
 	}
 }
 

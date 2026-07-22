@@ -24,6 +24,7 @@ db = 0
 [JWT]
 secret = "offer-hub-test-secret"
 expire = 24
+token_cache_expire = 24
 enable = true
 
 [RateLimit]

@@ -17,18 +17,21 @@ import (
 )
 
 type authDataStub struct {
-	exists          bool
-	existsErr       error
-	createErr       error
-	checkedUsername string
-	record          data.CreateUserRecord
-	createCalls     int
-	user            data.UserRecord
-	userErr         error
-	loginUsername   string
-	blacklistToken  string
-	blacklistTTL    time.Duration
-	blacklistErr    error
+	exists             bool
+	existsErr          error
+	createErr          error
+	checkedUsername    string
+	record             data.CreateUserRecord
+	createCalls        int
+	user               data.UserRecord
+	userErr            error
+	loginUsername      string
+	latestTokenUserID  string
+	latestToken        string
+	latestTokenTTL     time.Duration
+	latestTokenErr     error
+	deletedTokenUserID string
+	deleteTokenErr     error
 }
 
 func (stub *authDataStub) UsernameExists(_ context.Context, username string) (bool, error) {
@@ -47,10 +50,16 @@ func (stub *authDataStub) GetUserByUsername(_ context.Context, username string) 
 	return stub.user, stub.userErr
 }
 
-func (stub *authDataStub) AddTokenToBlacklist(_ context.Context, token string, ttl time.Duration) error {
-	stub.blacklistToken = token
-	stub.blacklistTTL = ttl
-	return stub.blacklistErr
+func (stub *authDataStub) SaveLatestToken(_ context.Context, userID, token string, ttl time.Duration) error {
+	stub.latestTokenUserID = userID
+	stub.latestToken = token
+	stub.latestTokenTTL = ttl
+	return stub.latestTokenErr
+}
+
+func (stub *authDataStub) DeleteLatestToken(_ context.Context, userID string) error {
+	stub.deletedTokenUserID = userID
+	return stub.deleteTokenErr
 }
 
 func newAuthServiceForTest(t *testing.T, stub AuthData) *AuthService {
@@ -59,6 +68,7 @@ func newAuthServiceForTest(t *testing.T, stub AuthData) *AuthService {
 		Secret:           "test-jwt-secret",
 		Expire:           24,
 		TokenCacheExpire: 48,
+		Enable:           true,
 	})
 	if err != nil {
 		t.Fatalf("NewAuthService() error = %v", err)
@@ -247,9 +257,12 @@ func TestAuthServiceLoginReturnsTokenAndCamelCaseUserData(t *testing.T) {
 	if claims.ExpiresAt == nil || !claims.ExpiresAt.Time.Equal(now.Add(24*time.Hour)) {
 		t.Fatalf("token expires_at = %v, want %v", claims.ExpiresAt, now.Add(24*time.Hour))
 	}
+	if stub.latestTokenUserID != "abc123" || stub.latestToken != got.Token || stub.latestTokenTTL != 48*time.Hour {
+		t.Fatalf("latest token cache = user %q token %q ttl %s", stub.latestTokenUserID, stub.latestToken, stub.latestTokenTTL)
+	}
 }
 
-func TestAuthServiceLoginRejectsUnknownUserWrongPasswordAndDisabledUser(t *testing.T) {
+func TestAuthServiceLoginRejectsUnknownUserAndWrongPassword(t *testing.T) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.MinCost)
 	if err != nil {
 		t.Fatalf("generate test password hash: %v", err)
@@ -261,7 +274,7 @@ func TestAuthServiceLoginRejectsUnknownUserWrongPasswordAndDisabledUser(t *testi
 	}{
 		{name: "unknown user", stub: &authDataStub{userErr: data.ErrUserNotFound}, password: "123456"},
 		{name: "wrong password", stub: &authDataStub{user: data.UserRecord{Password: string(passwordHash), UserStatus: 1}}, password: "654321"},
-		{name: "disabled user", stub: &authDataStub{user: data.UserRecord{Password: string(passwordHash), UserStatus: -1}}, password: "123456"},
+		{name: "wrong password on disabled user", stub: &authDataStub{user: data.UserRecord{Password: string(passwordHash), UserStatus: -1}}, password: "654321"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -274,6 +287,47 @@ func TestAuthServiceLoginRejectsUnknownUserWrongPasswordAndDisabledUser(t *testi
 				t.Fatalf("Login() error = %v, want ErrInvalidCredentials", err)
 			}
 		})
+	}
+}
+
+func TestAuthServiceLoginReturnsLatestTokenCacheError(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("generate test password hash: %v", err)
+	}
+	stub := &authDataStub{
+		user: data.UserRecord{
+			UserID:     "abc123",
+			Password:   string(passwordHash),
+			UserStatus: data.UserStatusActive,
+		},
+		latestTokenErr: errors.New("redis unavailable"),
+	}
+	authService := newAuthServiceForTest(t, stub)
+
+	_, err = authService.Login(context.Background(), model.PasswordLoginReq{
+		Username: "testuser",
+		Password: "123456",
+	})
+	if err == nil || errors.Is(err, ErrInvalidCredentials) || errors.Is(err, ErrAccountUnavailable) {
+		t.Fatalf("Login() error = %v, want internal latest-token cache error", err)
+	}
+}
+
+func TestAuthServiceLoginRejectsDisabledUserAfterPasswordVerification(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("generate test password hash: %v", err)
+	}
+	stub := &authDataStub{user: data.UserRecord{Password: string(passwordHash), UserStatus: -1}}
+	authService := newAuthServiceForTest(t, stub)
+
+	_, err = authService.Login(context.Background(), model.PasswordLoginReq{
+		Username: "testuser",
+		Password: "123456",
+	})
+	if !errors.Is(err, ErrAccountUnavailable) {
+		t.Fatalf("Login() error = %v, want ErrAccountUnavailable", err)
 	}
 }
 
@@ -309,7 +363,7 @@ func TestNewAuthServiceRejectsInvalidJWTConfig(t *testing.T) {
 	}
 }
 
-func TestAuthServiceLogoutUsesConfiguredTokenCacheTTL(t *testing.T) {
+func TestAuthServiceLogoutDeletesLatestToken(t *testing.T) {
 	stub := &authDataStub{}
 	authService := newAuthServiceForTest(t, stub)
 	now := time.Date(2030, time.January, 2, 3, 4, 5, 0, time.UTC)
@@ -322,11 +376,8 @@ func TestAuthServiceLogoutUsesConfiguredTokenCacheTTL(t *testing.T) {
 	if err := authService.Logout(context.Background(), token); err != nil {
 		t.Fatalf("Logout() error = %v", err)
 	}
-	if stub.blacklistToken != token {
-		t.Fatalf("blacklisted token = %q, want generated token", stub.blacklistToken)
-	}
-	if stub.blacklistTTL != 48*time.Hour {
-		t.Fatalf("blacklist TTL = %s, want 48h", stub.blacklistTTL)
+	if stub.deletedTokenUserID != "abc123" {
+		t.Fatalf("deleted latest token user = %q, want abc123", stub.deletedTokenUserID)
 	}
 }
 
@@ -350,13 +401,13 @@ func TestAuthServiceLogoutRejectsInvalidOrExpiredToken(t *testing.T) {
 	if err := authService.Logout(context.Background(), expiredToken); !errors.Is(err, ErrInvalidLogoutToken) {
 		t.Fatalf("Logout(expired token) error = %v, want ErrInvalidLogoutToken", err)
 	}
-	if stub.blacklistToken != "" {
-		t.Fatalf("expired token was blacklisted: %q", stub.blacklistToken)
+	if stub.deletedTokenUserID != "" {
+		t.Fatalf("expired token deleted latest token for user: %q", stub.deletedTokenUserID)
 	}
 }
 
-func TestAuthServiceLogoutReturnsBlacklistError(t *testing.T) {
-	stub := &authDataStub{blacklistErr: errors.New("redis unavailable")}
+func TestAuthServiceLogoutReturnsDeleteLatestTokenError(t *testing.T) {
+	stub := &authDataStub{deleteTokenErr: errors.New("redis unavailable")}
 	authService := newAuthServiceForTest(t, stub)
 	now := time.Date(2030, time.January, 2, 3, 4, 5, 0, time.UTC)
 	authService.now = func() time.Time { return now }
@@ -366,6 +417,6 @@ func TestAuthServiceLogoutReturnsBlacklistError(t *testing.T) {
 	}
 
 	if err := authService.Logout(context.Background(), token); err == nil {
-		t.Fatal("Logout() error = nil, want blacklist error")
+		t.Fatal("Logout() error = nil, want delete latest token error")
 	}
 }

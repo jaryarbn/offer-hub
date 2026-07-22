@@ -40,6 +40,11 @@ enable = true
 enable = true
 window_seconds = 60
 max_requests = 20
+
+[AuthRateLimit]
+enable = true
+window_seconds = 60
+max_requests = 10
 `
 
 func TestInitWithExplicitPath(t *testing.T) {
@@ -61,6 +66,9 @@ func TestInitWithExplicitPath(t *testing.T) {
 	if !Conf.RateLimit.Enable || Conf.RateLimit.MaxRequests != 20 {
 		t.Fatalf("unexpected RateLimit config: %+v", Conf.RateLimit)
 	}
+	if !Conf.AuthRateLimit.Enable || Conf.AuthRateLimit.WindowSeconds != 60 || Conf.AuthRateLimit.MaxRequests != 10 {
+		t.Fatalf("unexpected AuthRateLimit config: %+v", Conf.AuthRateLimit)
+	}
 }
 
 func TestInitUsesAppEnvironment(t *testing.T) {
@@ -81,6 +89,19 @@ func TestConfigFileNameDefaultsToTest(t *testing.T) {
 
 	if name := configFileName(); name != "config-test.toml" {
 		t.Fatalf("configFileName() = %q, want config-test.toml", name)
+	}
+}
+
+func TestTrackedConfigUsesDefaultAuthRateLimit(t *testing.T) {
+	previous := Conf
+	t.Cleanup(func() { Conf = previous })
+
+	path := filepath.Join("..", "..", "config", "config-test.toml")
+	if err := Init(path); err != nil {
+		t.Fatalf("Init(%q) error = %v", path, err)
+	}
+	if !Conf.AuthRateLimit.Enable || Conf.AuthRateLimit.WindowSeconds != 60 || Conf.AuthRateLimit.MaxRequests != 10 {
+		t.Fatalf("AuthRateLimit = %+v, want enabled 60s/10", Conf.AuthRateLimit)
 	}
 }
 

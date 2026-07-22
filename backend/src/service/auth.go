@@ -24,6 +24,7 @@ var (
 	ErrUsernameAlreadyExists = data.ErrUsernameAlreadyExists
 	ErrInvalidLoginParams    = errors.New("invalid login parameters")
 	ErrInvalidCredentials    = errors.New("invalid username or password")
+	ErrAccountUnavailable    = errors.New("account is unavailable")
 	ErrInvalidLogoutToken    = errors.New("invalid logout token")
 )
 
@@ -31,7 +32,8 @@ type AuthData interface {
 	UsernameExists(context.Context, string) (bool, error)
 	CreateUser(context.Context, data.CreateUserRecord) error
 	GetUserByUsername(context.Context, string) (data.UserRecord, error)
-	AddTokenToBlacklist(context.Context, string, time.Duration) error
+	SaveLatestToken(context.Context, string, string, time.Duration) error
+	DeleteLatestToken(context.Context, string) error
 }
 
 type AuthService struct {
@@ -41,6 +43,7 @@ type AuthService struct {
 	jwtSecret     []byte
 	jwtExpire     time.Duration
 	tokenCacheTTL time.Duration
+	singleSignOn  bool
 	now           func() time.Time
 }
 
@@ -69,6 +72,7 @@ func NewAuthService(authData AuthData, jwtConfig config.JWTConfig) (*AuthService
 		jwtSecret:     []byte(jwtConfig.Secret),
 		jwtExpire:     time.Duration(jwtConfig.Expire) * time.Hour,
 		tokenCacheTTL: time.Duration(tokenCacheExpire) * time.Hour,
+		singleSignOn:  jwtConfig.Enable,
 		now:           time.Now,
 	}, nil
 }
@@ -138,13 +142,18 @@ func (service *AuthService) Login(
 		}
 		return model.PasswordLoginData{}, fmt.Errorf("compare login password: %w", err)
 	}
-	if user.UserStatus != 1 {
-		return model.PasswordLoginData{}, ErrInvalidCredentials
+	if user.UserStatus != data.UserStatusActive {
+		return model.PasswordLoginData{}, ErrAccountUnavailable
 	}
 
 	token, err := service.signToken(user.UserID)
 	if err != nil {
 		return model.PasswordLoginData{}, fmt.Errorf("sign login token: %w", err)
+	}
+	if service.singleSignOn {
+		if err := service.data.SaveLatestToken(ctx, user.UserID, token, service.tokenCacheTTL); err != nil {
+			return model.PasswordLoginData{}, fmt.Errorf("cache latest login token: %w", err)
+		}
 	}
 
 	return model.PasswordLoginData{
@@ -206,8 +215,10 @@ func (service *AuthService) Logout(ctx context.Context, tokenString string) erro
 	if claims.ExpiresAt.Time.Sub(now) <= 0 {
 		return ErrInvalidLogoutToken
 	}
-	if err := service.data.AddTokenToBlacklist(ctx, tokenString, service.tokenCacheTTL); err != nil {
-		return fmt.Errorf("blacklist token: %w", err)
+	if service.singleSignOn {
+		if err := service.data.DeleteLatestToken(ctx, claims.UserID); err != nil {
+			return fmt.Errorf("delete latest login token: %w", err)
+		}
 	}
 	return nil
 }

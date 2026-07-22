@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -14,8 +15,10 @@ import (
 )
 
 const (
-	unauthorizedMessage  = "未认证"
-	internalErrorMessage = "服务器内部错误"
+	unauthorizedMessage       = "未认证"
+	accountUnavailableMessage = "账号不可用"
+	invalidatedTokenMessage   = "Token已失效，请重新登录"
+	internalErrorMessage      = "服务器内部错误"
 )
 
 type jwtAuthClaims struct {
@@ -23,7 +26,9 @@ type jwtAuthClaims struct {
 	jwt.RegisteredClaims
 }
 
-type tokenBlacklistChecker func(context.Context, string) (bool, error)
+type userStatusGetter func(context.Context, string) (int, error)
+
+type latestTokenChecker func(context.Context, string, string) (bool, error)
 
 type authErrorResponse struct {
 	Code int    `json:"code"`
@@ -31,29 +36,30 @@ type authErrorResponse struct {
 	Data any    `json:"data"`
 }
 
-// JWTAuthMiddleware validates a Bearer token, rejects logged-out tokens, and
-// forwards the verified user_id to handlers through the request Header.
+// JWTAuthMiddleware validates a Bearer token, the user status, and the latest
+// SSO token before forwarding the verified user_id in the request Header.
 func JWTAuthMiddleware() gin.HandlerFunc {
 	var jwtConfig config.JWTConfig
 	if config.Conf != nil {
 		jwtConfig = config.Conf.JWT
 	}
-	return newJWTAuthMiddleware(jwtConfig, data.IsTokenBlacklisted)
+	return newJWTAuthMiddleware(jwtConfig, getUserStatus, checkTokenInRedis)
 }
 
-// SoftJWTAuthMiddleware enriches a request with user_id when a valid JWT is
-// present. Missing or invalid credentials are treated as an anonymous request.
+// SoftJWTAuthMiddleware enriches requests carrying a current JWT. Missing or
+// malformed JWTs remain anonymous; a parsed but superseded SSO token is rejected.
 func SoftJWTAuthMiddleware() gin.HandlerFunc {
 	var jwtConfig config.JWTConfig
 	if config.Conf != nil {
 		jwtConfig = config.Conf.JWT
 	}
-	return newSoftJWTAuthMiddleware(jwtConfig)
+	return newSoftJWTAuthMiddleware(jwtConfig, checkTokenInRedis)
 }
 
 func newJWTAuthMiddleware(
 	jwtConfig config.JWTConfig,
-	isTokenBlacklisted tokenBlacklistChecker,
+	getStatus userStatusGetter,
+	checkLatestToken latestTokenChecker,
 ) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.Request.Header.Del("user_id")
@@ -69,20 +75,38 @@ func newJWTAuthMiddleware(
 			return
 		}
 
-		if isTokenBlacklisted == nil {
-			log.Printf("check JWT blacklist: checker is not initialized")
+		if getStatus == nil {
+			log.Printf("check JWT user status: getter is not initialized")
 			abortAuthRequest(ctx, 500, internalErrorMessage)
 			return
 		}
-		blacklisted, err := isTokenBlacklisted(ctx.Request.Context(), tokenString)
+		userStatus, err := getStatus(ctx.Request.Context(), claims.UserID)
 		if err != nil {
-			log.Printf("check JWT blacklist: %v", err)
+			log.Printf("check JWT user status: %v", err)
 			abortAuthRequest(ctx, 500, internalErrorMessage)
 			return
 		}
-		if blacklisted {
-			abortAuthRequest(ctx, 401, unauthorizedMessage)
+		if userStatus != data.UserStatusActive {
+			abortAuthRequest(ctx, 401, accountUnavailableMessage)
 			return
+		}
+
+		if jwtConfig.Enable {
+			if checkLatestToken == nil {
+				log.Printf("check latest JWT: checker is not initialized")
+				abortAuthRequest(ctx, 500, internalErrorMessage)
+				return
+			}
+			valid, err := checkLatestToken(ctx.Request.Context(), claims.UserID, tokenString)
+			if err != nil {
+				log.Printf("check latest JWT: %v", err)
+				abortAuthRequest(ctx, 500, internalErrorMessage)
+				return
+			}
+			if !valid {
+				abortAuthRequest(ctx, 401, invalidatedTokenMessage)
+				return
+			}
 		}
 
 		// Always overwrite a client-supplied user_id with the signed claim.
@@ -91,7 +115,10 @@ func newJWTAuthMiddleware(
 	}
 }
 
-func newSoftJWTAuthMiddleware(jwtConfig config.JWTConfig) gin.HandlerFunc {
+func newSoftJWTAuthMiddleware(
+	jwtConfig config.JWTConfig,
+	checkLatestToken latestTokenChecker,
+) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// A user_id supplied by the client is never an authenticated identity.
 		ctx.Request.Header.Del("user_id")
@@ -102,11 +129,53 @@ func newSoftJWTAuthMiddleware(jwtConfig config.JWTConfig) gin.HandlerFunc {
 			return
 		}
 
-		if claims, valid := parseJWTClaims(tokenString, jwtConfig); valid {
-			ctx.Request.Header.Set("user_id", claims.UserID)
+		claims, valid := parseJWTClaims(tokenString, jwtConfig)
+		if !valid {
+			ctx.Next()
+			return
 		}
+
+		if jwtConfig.Enable {
+			if checkLatestToken == nil {
+				log.Printf("check latest soft JWT: checker is not initialized")
+				abortAuthRequestWithStatus(ctx, http.StatusInternalServerError, 500, internalErrorMessage)
+				return
+			}
+			latest, err := checkLatestToken(ctx.Request.Context(), claims.UserID, tokenString)
+			if err != nil {
+				log.Printf("check latest soft JWT: %v", err)
+				abortAuthRequestWithStatus(ctx, http.StatusInternalServerError, 500, internalErrorMessage)
+				return
+			}
+			if !latest {
+				abortAuthRequestWithStatus(ctx, http.StatusUnauthorized, 401, invalidatedTokenMessage)
+				return
+			}
+		}
+
+		ctx.Request.Header.Set("user_id", claims.UserID)
 		ctx.Next()
 	}
+}
+
+func getUserStatus(ctx context.Context, userID string) (int, error) {
+	initializedData := data.GetData()
+	if initializedData == nil {
+		return 0, errors.New("data is not initialized")
+	}
+
+	user, err := initializedData.GetUserByID(ctx, userID)
+	if errors.Is(err, data.ErrUserNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return user.UserStatus, nil
+}
+
+func checkTokenInRedis(ctx context.Context, userID, token string) (bool, error) {
+	return data.CheckLatestToken(ctx, userID, token)
 }
 
 func parseJWTClaims(tokenString string, jwtConfig config.JWTConfig) (*jwtAuthClaims, bool) {
@@ -138,15 +207,24 @@ func parseJWTClaims(tokenString string, jwtConfig config.JWTConfig) (*jwtAuthCla
 }
 
 func bearerToken(authorization string) (string, bool) {
-	parts := strings.Fields(authorization)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
+	const prefix = "Bearer "
+	if !strings.HasPrefix(authorization, prefix) {
 		return "", false
 	}
-	return parts[1], true
+
+	token := strings.TrimPrefix(authorization, prefix)
+	if token == "" || strings.TrimSpace(token) != token || strings.ContainsAny(token, " \t\r\n") {
+		return "", false
+	}
+	return token, true
 }
 
 func abortAuthRequest(ctx *gin.Context, code int, message string) {
-	ctx.AbortWithStatusJSON(http.StatusOK, authErrorResponse{
+	abortAuthRequestWithStatus(ctx, http.StatusOK, code, message)
+}
+
+func abortAuthRequestWithStatus(ctx *gin.Context, status, code int, message string) {
+	ctx.AbortWithStatusJSON(status, authErrorResponse{
 		Code: code,
 		Msg:  message,
 		Data: nil,

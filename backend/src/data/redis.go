@@ -16,10 +16,10 @@ var redisClient *redis.Client
 
 var (
 	ErrRedisNotInitialized = errors.New("Redis is not initialized")
-	ErrInvalidBlacklistTTL = errors.New("blacklist TTL must be positive")
+	ErrInvalidTokenTTL     = errors.New("token TTL must be positive")
 )
 
-const tokenBlacklistPrefix = "blacklist:"
+const latestTokenPrefix = "jwt:latest_token:"
 
 func NewRedis(conf *config.TomlConfig) (*redis.Client, error) {
 	if conf == nil {
@@ -57,24 +57,44 @@ func CloseRedis() error {
 	return err
 }
 
-func (data *Data) AddTokenToBlacklist(ctx context.Context, token string, ttl time.Duration) error {
+func (data *Data) SaveLatestToken(ctx context.Context, userID, token string, ttl time.Duration) error {
+	if strings.TrimSpace(userID) == "" {
+		return errors.New("user ID is empty")
+	}
 	if strings.TrimSpace(token) == "" {
 		return errors.New("token is empty")
 	}
 	if ttl <= 0 {
-		return ErrInvalidBlacklistTTL
+		return ErrInvalidTokenTTL
 	}
 	if redisClient == nil {
 		return ErrRedisNotInitialized
 	}
 
-	if err := redisClient.Set(ctx, blacklistKey(token), "1", ttl).Err(); err != nil {
-		return fmt.Errorf("write token blacklist: %w", err)
+	if err := redisClient.Set(ctx, latestTokenKey(userID), token, ttl).Err(); err != nil {
+		return fmt.Errorf("write latest token: %w", err)
 	}
 	return nil
 }
 
-func IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
+func (data *Data) DeleteLatestToken(ctx context.Context, userID string) error {
+	if strings.TrimSpace(userID) == "" {
+		return errors.New("user ID is empty")
+	}
+	if redisClient == nil {
+		return ErrRedisNotInitialized
+	}
+
+	if err := redisClient.Del(ctx, latestTokenKey(userID)).Err(); err != nil {
+		return fmt.Errorf("delete latest token: %w", err)
+	}
+	return nil
+}
+
+func CheckLatestToken(ctx context.Context, userID, token string) (bool, error) {
+	if strings.TrimSpace(userID) == "" {
+		return false, errors.New("user ID is empty")
+	}
 	if strings.TrimSpace(token) == "" {
 		return false, errors.New("token is empty")
 	}
@@ -82,13 +102,16 @@ func IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
 		return false, ErrRedisNotInitialized
 	}
 
-	exists, err := redisClient.Exists(ctx, blacklistKey(token)).Result()
-	if err != nil {
-		return false, fmt.Errorf("read token blacklist: %w", err)
+	latestToken, err := redisClient.Get(ctx, latestTokenKey(userID)).Result()
+	if errors.Is(err, redis.Nil) {
+		return false, nil
 	}
-	return exists > 0, nil
+	if err != nil {
+		return false, fmt.Errorf("read latest token: %w", err)
+	}
+	return latestToken == token, nil
 }
 
-func blacklistKey(token string) string {
-	return tokenBlacklistPrefix + token
+func latestTokenKey(userID string) string {
+	return latestTokenPrefix + userID
 }

@@ -27,30 +27,36 @@ func TestNewRedisRejectsNilConfig(t *testing.T) {
 	}
 }
 
-func TestTokenBlacklistKey(t *testing.T) {
-	if got := blacklistKey("signed-token"); got != "blacklist:signed-token" {
-		t.Fatalf("blacklistKey() = %q, want blacklist:signed-token", got)
+func TestLatestTokenKey(t *testing.T) {
+	if got := latestTokenKey("user-123"); got != "jwt:latest_token:user-123" {
+		t.Fatalf("latestTokenKey() = %q, want jwt:latest_token:user-123", got)
 	}
 }
 
-func TestAddTokenToBlacklistValidatesBeforeRedisAccess(t *testing.T) {
+func TestSaveLatestTokenValidatesBeforeRedisAccess(t *testing.T) {
 	data := &Data{}
-	if err := data.AddTokenToBlacklist(context.Background(), "", time.Minute); err == nil {
+	if err := data.SaveLatestToken(context.Background(), "", "token", time.Minute); err == nil {
+		t.Fatal("empty user ID error = nil")
+	}
+	if err := data.SaveLatestToken(context.Background(), "user-123", "", time.Minute); err == nil {
 		t.Fatal("empty token error = nil")
 	}
-	if err := data.AddTokenToBlacklist(context.Background(), "token", 0); !errors.Is(err, ErrInvalidBlacklistTTL) {
-		t.Fatalf("zero TTL error = %v, want ErrInvalidBlacklistTTL", err)
+	if err := data.SaveLatestToken(context.Background(), "user-123", "token", 0); !errors.Is(err, ErrInvalidTokenTTL) {
+		t.Fatalf("zero TTL error = %v, want ErrInvalidTokenTTL", err)
 	}
-	if err := data.AddTokenToBlacklist(context.Background(), "token", time.Minute); !errors.Is(err, ErrRedisNotInitialized) {
+	if err := data.SaveLatestToken(context.Background(), "user-123", "token", time.Minute); !errors.Is(err, ErrRedisNotInitialized) {
 		t.Fatalf("uninitialized Redis error = %v, want ErrRedisNotInitialized", err)
 	}
 }
 
-func TestIsTokenBlacklistedValidatesBeforeRedisAccess(t *testing.T) {
-	if _, err := IsTokenBlacklisted(context.Background(), ""); err == nil {
+func TestCheckLatestTokenValidatesBeforeRedisAccess(t *testing.T) {
+	if _, err := CheckLatestToken(context.Background(), "", "token"); err == nil {
+		t.Fatal("empty user ID error = nil")
+	}
+	if _, err := CheckLatestToken(context.Background(), "user-123", ""); err == nil {
 		t.Fatal("empty token error = nil")
 	}
-	if _, err := IsTokenBlacklisted(context.Background(), "token"); !errors.Is(err, ErrRedisNotInitialized) {
+	if _, err := CheckLatestToken(context.Background(), "user-123", "token"); !errors.Is(err, ErrRedisNotInitialized) {
 		t.Fatalf("uninitialized Redis error = %v, want ErrRedisNotInitialized", err)
 	}
 }

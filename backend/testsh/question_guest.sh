@@ -161,6 +161,8 @@ elif mode == "detail":
     require(data.get("question_id") == expected_id, "详情 question_id 与列表抽取值不一致")
     require(data.get("status") == 1, "详情应为正常题目")
     require(isinstance(data.get("content"), str) and data["content"], "详情 content 不能为空")
+    require(len(data["content"]) <= 150, "游客详情 content 最多返回前 150 个字符")
+    require(data.get("analysis_content") == "", "游客 analysis_content 应为空字符串")
     require(data.get("user_tag") == 0, "游客 user_tag 应为 0")
     require(data.get("user_liked") is False, "游客 user_liked 应为 false")
 

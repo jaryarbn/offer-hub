@@ -17,7 +17,7 @@ type Service interface {
 	GetAllQuestionList(context.Context, model.GetAllQuestionListReq) ([]model.GetAllQuestionListData, error)
 	ListQuestions(context.Context, model.ListQuestionReq) (model.ListQuestionResponseData, error)
 	ListQuestionsMeta(context.Context, model.ListQuestionMetaReq) (model.ListQuestionMetaResp, error)
-	GetQuestionDetail(context.Context, model.GetQuestionDetailReq) (model.OneQuestion, error)
+	GetQuestionDetail(context.Context, model.GetQuestionDetailReq, string) (model.QuestionDetail, error)
 	GetHotQuestions(context.Context, model.GetHotQuestionsReq) (model.GetHotQuestionsResp, error)
 }
 
@@ -105,7 +105,8 @@ func (controller *Controller) GetQuestionDetail(ctx *gin.Context) {
 		return
 	}
 
-	question, err := controller.service.GetQuestionDetail(ctx.Request.Context(), req)
+	userID := strings.TrimSpace(ctx.GetHeader("user_id"))
+	question, err := controller.service.GetQuestionDetail(ctx.Request.Context(), req, userID)
 	if errors.Is(err, service.ErrQuestionNotFound) {
 		ctx.JSON(http.StatusOK, gin.H{"code": 404, "msg": "question not found", "data": nil})
 		return

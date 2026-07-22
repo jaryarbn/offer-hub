@@ -15,16 +15,17 @@ import (
 )
 
 type questionServiceStub struct {
-	req         model.GetAllQuestionListReq
-	listReq     model.ListQuestionReq
-	metaReq     model.ListQuestionMetaReq
-	metaResp    model.ListQuestionMetaResp
-	detailReq   model.GetQuestionDetailReq
-	detail      model.OneQuestion
-	detailErr   error
-	detailCalls int
-	hotReq      model.GetHotQuestionsReq
-	hotResp     model.GetHotQuestionsResp
+	req          model.GetAllQuestionListReq
+	listReq      model.ListQuestionReq
+	metaReq      model.ListQuestionMetaReq
+	metaResp     model.ListQuestionMetaResp
+	detailReq    model.GetQuestionDetailReq
+	detail       model.QuestionDetail
+	detailErr    error
+	detailCalls  int
+	detailUserID string
+	hotReq       model.GetHotQuestionsReq
+	hotResp      model.GetHotQuestionsResp
 }
 
 func (stub *questionServiceStub) GetAllQuestionList(
@@ -46,9 +47,11 @@ func (stub *questionServiceStub) ListQuestionsMeta(
 func (stub *questionServiceStub) GetQuestionDetail(
 	_ context.Context,
 	req model.GetQuestionDetailReq,
-) (model.OneQuestion, error) {
+	userID string,
+) (model.QuestionDetail, error) {
 	stub.detailCalls++
 	stub.detailReq = req
+	stub.detailUserID = userID
 	return stub.detail, stub.detailErr
 }
 
@@ -169,19 +172,23 @@ func TestGetQuestionDetailValidatesRequiredQuestionID(t *testing.T) {
 
 func TestGetQuestionDetailReturnsCompleteQuestion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	stub := &questionServiceStub{detail: model.OneQuestion{
-		QuestionID: "question-1",
-		Title:      "Go 并发",
-		Content:    "完整题目内容",
-		BankList:   []string{},
-		Tags:       []string{},
-		Status:     1,
+	stub := &questionServiceStub{detail: model.QuestionDetail{
+		OneQuestion: model.OneQuestion{
+			QuestionID: "question-1",
+			Title:      "Go 并发",
+			Content:    "完整题目内容",
+			BankList:   []string{},
+			Tags:       []string{},
+			Status:     1,
+		},
+		AnalysisContent: "完整解析",
 	}}
 	controller := NewController(stub)
 	engine := gin.New()
 	engine.GET("/api/v1/question/detail", controller.GetQuestionDetail)
 
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/question/detail?question_id=question-1", nil)
+	request.Header.Set("user_id", "user-1")
 	response := httptest.NewRecorder()
 	engine.ServeHTTP(response, request)
 
@@ -189,11 +196,14 @@ func TestGetQuestionDetailReturnsCompleteQuestion(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body.Code != 0 || body.Msg != "success" || body.Data.Content != "完整题目内容" {
+	if body.Code != 0 || body.Msg != "success" || body.Data.Content != "完整题目内容" || body.Data.AnalysisContent != "完整解析" {
 		t.Fatalf("response body = %#v", body)
 	}
 	if stub.detailReq.QuestionID != "question-1" {
 		t.Fatalf("bound question_id = %q", stub.detailReq.QuestionID)
+	}
+	if stub.detailUserID != "user-1" {
+		t.Fatalf("service user_id = %q, want %q", stub.detailUserID, "user-1")
 	}
 }
 

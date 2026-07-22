@@ -25,6 +25,14 @@ type questionDataStub struct {
 	question     data.QuestionRecord
 	questionID   string
 	questionErr  error
+	liked        bool
+	likedUserID  string
+	likedQID     string
+	likedErr     error
+	userTag      int
+	tagUserID    string
+	tagQID       string
+	userTagErr   error
 	hotQuestions []data.HotQuestionRecord
 	hotJobName   string
 	hotLimit     int
@@ -68,6 +76,26 @@ func (stub *questionDataStub) GetQuestionByID(
 ) (data.QuestionRecord, error) {
 	stub.questionID = questionID
 	return stub.question, stub.questionErr
+}
+
+func (stub *questionDataStub) IsQuestionLiked(
+	_ context.Context,
+	userID string,
+	questionID string,
+) (bool, error) {
+	stub.likedUserID = userID
+	stub.likedQID = questionID
+	return stub.liked, stub.likedErr
+}
+
+func (stub *questionDataStub) GetUserQuestionTag(
+	_ context.Context,
+	userID string,
+	questionID string,
+) (int, error) {
+	stub.tagUserID = userID
+	stub.tagQID = questionID
+	return stub.userTag, stub.userTagErr
 }
 
 func (stub *questionDataStub) ListHotQuestions(
@@ -207,39 +235,45 @@ func TestQuestionServiceListQuestionsMetaReturnsEmptyArray(t *testing.T) {
 	}
 }
 
-func TestQuestionServiceGetQuestionDetailReturnsFullContent(t *testing.T) {
+func TestQuestionServiceGetQuestionDetailTruncatesVisitorContent(t *testing.T) {
 	content := strings.Repeat("完整内容", 60)
 	createdAt := time.Date(2026, time.July, 21, 10, 30, 0, 0, time.Local)
 	stub := &questionDataStub{question: data.QuestionRecord{
-		QuestionID:    "question-1",
-		BankList:      nil,
-		Title:         "Go 并发",
-		Content:       content,
-		Difficulty:    2,
-		Tags:          nil,
-		Status:        1,
-		VIP:           true,
-		HotDegree:     9,
-		ViewCount:     10,
-		ThumbsUpCount: 8,
-		DislikeCount:  1,
-		Order:         7,
-		CreateTime:    createdAt,
-		UpdateTime:    createdAt.Add(time.Hour),
+		QuestionID:      "question-1",
+		BankList:        nil,
+		Title:           "Go 并发",
+		Content:         content,
+		AnalysisContent: "仅登录用户可见的解析",
+		Difficulty:      2,
+		Tags:            nil,
+		Status:          1,
+		VIP:             true,
+		HotDegree:       9,
+		ViewCount:       10,
+		ThumbsUpCount:   8,
+		DislikeCount:    1,
+		Order:           7,
+		CreateTime:      createdAt,
+		UpdateTime:      createdAt.Add(time.Hour),
 	}}
 	questionService := NewQuestionService(stub)
 
-	got, err := questionService.GetQuestionDetail(context.Background(), model.GetQuestionDetailReq{
-		QuestionID: "question-1",
-	})
+	got, err := questionService.GetQuestionDetail(
+		context.Background(),
+		model.GetQuestionDetailReq{QuestionID: "question-1"},
+		"",
+	)
 	if err != nil {
 		t.Fatalf("GetQuestionDetail() error = %v", err)
 	}
 	if stub.questionID != "question-1" {
 		t.Fatalf("GetQuestionByID questionID = %q", stub.questionID)
 	}
-	if got.Content != content {
-		t.Fatalf("content was changed: got %d runes, want %d", len([]rune(got.Content)), len([]rune(content)))
+	if len([]rune(got.Content)) != visitorContentLength {
+		t.Fatalf("content rune length = %d, want %d", len([]rune(got.Content)), visitorContentLength)
+	}
+	if got.AnalysisContent != "" {
+		t.Fatalf("analysis_content = %q, want empty", got.AnalysisContent)
 	}
 	if got.BankList == nil || got.Tags == nil {
 		t.Fatalf("list fields must be non-nil: bank_list=%#v tags=%#v", got.BankList, got.Tags)
@@ -247,17 +281,91 @@ func TestQuestionServiceGetQuestionDetailReturnsFullContent(t *testing.T) {
 	if got.UserTag != 0 || got.UserLiked {
 		t.Fatalf("visitor fields = (%d, %t), want (0, false)", got.UserTag, got.UserLiked)
 	}
+	if stub.likedUserID != "" || stub.tagUserID != "" {
+		t.Fatalf("visitor interaction lookups = (%q, %q), want none", stub.likedUserID, stub.tagUserID)
+	}
 	if got.CreateTime != "2026-07-21 10:30:00" || got.UpdateTime != "2026-07-21 11:30:00" {
 		t.Fatalf("formatted times = (%q, %q)", got.CreateTime, got.UpdateTime)
+	}
+}
+
+func TestQuestionServiceGetQuestionDetailReturnsAuthenticatedUserState(t *testing.T) {
+	content := strings.Repeat("完整内容", 60)
+	stub := &questionDataStub{
+		question: data.QuestionRecord{
+			QuestionID:      "question-1",
+			Content:         content,
+			AnalysisContent: "完整解析",
+		},
+		liked:   true,
+		userTag: 3,
+	}
+	questionService := NewQuestionService(stub)
+
+	got, err := questionService.GetQuestionDetail(
+		context.Background(),
+		model.GetQuestionDetailReq{QuestionID: "question-1"},
+		"user-1",
+	)
+	if err != nil {
+		t.Fatalf("GetQuestionDetail() error = %v", err)
+	}
+	if got.Content != content || got.AnalysisContent != "完整解析" {
+		t.Fatalf("authenticated content = (%q, %q)", got.Content, got.AnalysisContent)
+	}
+	if !got.UserLiked || got.UserTag != 3 {
+		t.Fatalf("authenticated user state = (%t, %d), want (true, 3)", got.UserLiked, got.UserTag)
+	}
+	if stub.likedUserID != "user-1" || stub.likedQID != "question-1" {
+		t.Fatalf("like lookup args = (%q, %q)", stub.likedUserID, stub.likedQID)
+	}
+	if stub.tagUserID != "user-1" || stub.tagQID != "question-1" {
+		t.Fatalf("tag lookup args = (%q, %q)", stub.tagUserID, stub.tagQID)
+	}
+}
+
+func TestQuestionServiceGetQuestionDetailReturnsInteractionLookupError(t *testing.T) {
+	stub := &questionDataStub{
+		question: data.QuestionRecord{QuestionID: "question-1"},
+		likedErr: errors.New("mongo unavailable"),
+	}
+	questionService := NewQuestionService(stub)
+
+	_, err := questionService.GetQuestionDetail(
+		context.Background(),
+		model.GetQuestionDetailReq{QuestionID: "question-1"},
+		"user-1",
+	)
+	if err == nil || !strings.Contains(err.Error(), "get question like state") {
+		t.Fatalf("GetQuestionDetail() error = %v", err)
+	}
+}
+
+func TestQuestionServiceGetQuestionDetailReturnsTagLookupError(t *testing.T) {
+	stub := &questionDataStub{
+		question:   data.QuestionRecord{QuestionID: "question-1"},
+		userTagErr: errors.New("mongo unavailable"),
+	}
+	questionService := NewQuestionService(stub)
+
+	_, err := questionService.GetQuestionDetail(
+		context.Background(),
+		model.GetQuestionDetailReq{QuestionID: "question-1"},
+		"user-1",
+	)
+	if err == nil || !strings.Contains(err.Error(), "get question tag state") {
+		t.Fatalf("GetQuestionDetail() error = %v", err)
 	}
 }
 
 func TestQuestionServiceGetQuestionDetailPreservesNotFoundError(t *testing.T) {
 	questionService := NewQuestionService(&questionDataStub{questionErr: data.ErrQuestionNotFound})
 
-	_, err := questionService.GetQuestionDetail(context.Background(), model.GetQuestionDetailReq{
-		QuestionID: "missing",
-	})
+	_, err := questionService.GetQuestionDetail(
+		context.Background(),
+		model.GetQuestionDetailReq{QuestionID: "missing"},
+		"",
+	)
 	if !errors.Is(err, ErrQuestionNotFound) {
 		t.Fatalf("GetQuestionDetail() error = %v, want ErrQuestionNotFound", err)
 	}

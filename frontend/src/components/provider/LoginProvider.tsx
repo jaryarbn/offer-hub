@@ -8,7 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
+import { queryKeys } from '@/hooks/useQuestionQueries'
 import {
   getUserInfo,
   mapPasswordAuthUserToUserInfo,
@@ -35,6 +37,7 @@ interface LoginProviderProps {
 export const LoginContext = createContext<LoginContextValue | undefined>(undefined)
 
 export function LoginProvider({ children }: LoginProviderProps) {
+  const queryClient = useQueryClient()
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [showLoginDialog, setShowLoginDialogState] = useState(false)
@@ -44,12 +47,18 @@ export function LoginProvider({ children }: LoginProviderProps) {
   const initializedRef = useRef(false)
   const mountedRef = useRef(true)
 
-  const login = useCallback((passwordAuthUser: PasswordAuthUserDTO, nextToken: string) => {
-    sessionVersionRef.current += 1
-    localStorage.setItem(TOKEN_KEY, nextToken)
-    setToken(nextToken)
-    setUserInfo(mapPasswordAuthUserToUserInfo(passwordAuthUser))
-  }, [])
+  const login = useCallback(
+    (passwordAuthUser: PasswordAuthUserDTO, nextToken: string) => {
+      sessionVersionRef.current += 1
+      localStorage.setItem(TOKEN_KEY, nextToken)
+      setToken(nextToken)
+      setUserInfo(mapPasswordAuthUserToUserInfo(passwordAuthUser))
+
+      // token 已写入后再刷新详情，确保重新请求携带登录凭证。
+      void queryClient.invalidateQueries({ queryKey: queryKeys.details })
+    },
+    [queryClient]
+  )
 
   const logout = useCallback(() => {
     sessionVersionRef.current += 1

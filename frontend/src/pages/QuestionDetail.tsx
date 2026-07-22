@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { BankQuestionSidebar } from '@/components/BankQuestionSidebar'
 import { Header } from '@/components/Header'
-import { QuestionMarkdown } from '@/components/QuestionMarkdown'
+import { DetailContent } from '@/components/detail/DetailContent'
 import { Button } from '@/components/ui/button'
 import { useQuestionDetail } from '@/hooks/useQuestionQueries'
 
@@ -71,7 +71,7 @@ export function QuestionDetail() {
           </div>
 
           <div className="mt-8 border-t border-border pt-4 text-base">
-            <QuestionMarkdown content={question.content} />
+            <DetailContent content={question.content} />
           </div>
         </article>
       </div>

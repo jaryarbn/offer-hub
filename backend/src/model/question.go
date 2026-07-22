@@ -67,9 +67,14 @@ type GetQuestionDetailReq struct {
 }
 
 type GetQuestionDetailResp struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data OneQuestion `json:"data"`
+	Code int            `json:"code"`
+	Msg  string         `json:"msg"`
+	Data QuestionDetail `json:"data"`
+}
+
+type QuestionDetail struct {
+	OneQuestion
+	AnalysisContent string `json:"analysis_content"`
 }
 
 type HotQuestionInfo struct {

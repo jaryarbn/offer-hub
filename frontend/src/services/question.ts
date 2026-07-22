@@ -14,8 +14,8 @@ import type {
   ListQuestionParams,
   ListQuestionResponse,
   ListQuestionResponseData,
-  Question,
   QuestionBankGroup,
+  QuestionDetail,
 } from '@/types/question'
 import { compactParams } from '@/utils/query'
 
@@ -36,7 +36,7 @@ export interface QuestionApiService {
   getAllQuestionBanks(params?: GetQuestionBankSeriesParams): Promise<QuestionBankGroup[]>
   getQuestionList(params?: ListQuestionParams): Promise<ListQuestionResponseData>
   getQuestionMetaList(params?: ListQuestionMetaParams): Promise<ListQuestionMetaResponseData>
-  getQuestionDetail(params: GetQuestionDetailParams): Promise<Question>
+  getQuestionDetail(params: GetQuestionDetailParams): Promise<QuestionDetail>
   getHotQuestionList(params?: GetHotQuestionListParams): Promise<GetHotQuestionListResponseData>
 }
 
@@ -169,7 +169,7 @@ export const questionApi: QuestionApiService = {
       throw new QuestionApiError(400, 'question_id 不能为空')
     }
 
-    return requestData<Question>(async () => {
+    return requestData<QuestionDetail>(async () => {
       const response = await apiClient.get<GetQuestionDetailResponse>(
         `${questionBasePath}/detail`,
         { params: { question_id: questionId } }

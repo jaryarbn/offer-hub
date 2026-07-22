@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"offer-hub/backend/src/data"
@@ -15,6 +16,8 @@ type QuestionData interface {
 	CountNormalQuestionsByBank(context.Context, []string) (map[string]int64, error)
 	FilterQuestions(context.Context, data.QuestionFilter) ([]data.QuestionRecord, int64, error)
 	GetQuestionByID(context.Context, string) (data.QuestionRecord, error)
+	IsQuestionLiked(context.Context, string, string) (bool, error)
+	GetUserQuestionTag(context.Context, string, string) (int, error)
 	ListHotQuestions(context.Context, string, int) ([]data.HotQuestionRecord, error)
 }
 
@@ -83,12 +86,34 @@ func (service *QuestionService) ListQuestionsMeta(
 func (service *QuestionService) GetQuestionDetail(
 	ctx context.Context,
 	req model.GetQuestionDetailReq,
-) (model.OneQuestion, error) {
+	userID string,
+) (model.QuestionDetail, error) {
 	record, err := service.data.GetQuestionByID(ctx, req.QuestionID)
 	if err != nil {
-		return model.OneQuestion{}, fmt.Errorf("get question detail: %w", err)
+		return model.QuestionDetail{}, fmt.Errorf("get question detail: %w", err)
 	}
-	return toOneQuestion(record, record.Content), nil
+
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return model.QuestionDetail{
+			OneQuestion: toOneQuestion(record, truncateRunes(record.Content, visitorContentLength)),
+		}, nil
+	}
+
+	question := model.QuestionDetail{
+		OneQuestion:     toOneQuestion(record, record.Content),
+		AnalysisContent: record.AnalysisContent,
+	}
+
+	question.UserLiked, err = service.data.IsQuestionLiked(ctx, userID, record.QuestionID)
+	if err != nil {
+		return model.QuestionDetail{}, fmt.Errorf("get question like state: %w", err)
+	}
+	question.UserTag, err = service.data.GetUserQuestionTag(ctx, userID, record.QuestionID)
+	if err != nil {
+		return model.QuestionDetail{}, fmt.Errorf("get question tag state: %w", err)
+	}
+	return question, nil
 }
 
 func (service *QuestionService) GetHotQuestions(

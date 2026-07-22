@@ -58,6 +58,11 @@ export interface Question {
   update_time: string
 }
 
+/** 题目详情在列表字段基础上额外返回解析内容。 */
+export interface QuestionDetail extends Question {
+  analysis_content: string
+}
+
 /** 题库全量列表中的题库信息。 */
 export interface QuestionBank {
   bank_id: string
@@ -114,5 +119,5 @@ export interface GetHotQuestionListResponseData {
 export type GetQuestionBankSeriesResponse = ApiResponse<QuestionBankGroup[]>
 export type ListQuestionResponse = ApiResponse<ListQuestionResponseData>
 export type ListQuestionMetaResponse = ApiResponse<ListQuestionMetaResponseData>
-export type GetQuestionDetailResponse = ApiResponse<Question>
+export type GetQuestionDetailResponse = ApiResponse<QuestionDetail>
 export type GetHotQuestionListResponse = ApiResponse<GetHotQuestionListResponseData>

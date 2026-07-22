@@ -13,10 +13,15 @@ import (
 )
 
 const (
-	questionBankSeriesCollection = "question_bank_series"
-	questionBankCollection       = "question_bank"
-	questionCollection           = "question"
-	questionNormalStatus         = 1
+	questionBankSeriesCollection  = "question_bank_series"
+	questionBankCollection        = "question_bank"
+	questionCollection            = "question"
+	userInteractionsCollection    = "user_interactions"
+	userQuestionTagCollection     = "user_question_tag"
+	questionNormalStatus          = 1
+	questionInteractionTargetType = 1
+	questionLikeInteractionType   = 1
+	activeInteractionStatus       = 1
 )
 
 var ErrQuestionNotFound = errors.New("question not found")
@@ -39,22 +44,23 @@ type QuestionBankRecord struct {
 }
 
 type QuestionRecord struct {
-	QuestionID    string    `bson:"question_id"`
-	BankList      []string  `bson:"bank_list"`
-	JobName       string    `bson:"job_name"`
-	Title         string    `bson:"title"`
-	Content       string    `bson:"content"`
-	Difficulty    int       `bson:"difficulty"`
-	Tags          []string  `bson:"tags"`
-	Status        int       `bson:"status"`
-	VIP           bool      `bson:"vip"`
-	HotDegree     int       `bson:"hot_degree"`
-	ViewCount     int       `bson:"view_count"`
-	ThumbsUpCount int       `bson:"thumbs_up_count"`
-	DislikeCount  int       `bson:"dislike_count"`
-	Order         int64     `bson:"order"`
-	CreateTime    time.Time `bson:"create_time"`
-	UpdateTime    time.Time `bson:"update_time"`
+	QuestionID      string    `bson:"question_id"`
+	BankList        []string  `bson:"bank_list"`
+	JobName         string    `bson:"job_name"`
+	Title           string    `bson:"title"`
+	Content         string    `bson:"content"`
+	AnalysisContent string    `bson:"analysis_content"`
+	Difficulty      int       `bson:"difficulty"`
+	Tags            []string  `bson:"tags"`
+	Status          int       `bson:"status"`
+	VIP             bool      `bson:"vip"`
+	HotDegree       int       `bson:"hot_degree"`
+	ViewCount       int       `bson:"view_count"`
+	ThumbsUpCount   int       `bson:"thumbs_up_count"`
+	DislikeCount    int       `bson:"dislike_count"`
+	Order           int64     `bson:"order"`
+	CreateTime      time.Time `bson:"create_time"`
+	UpdateTime      time.Time `bson:"update_time"`
 }
 
 type HotQuestionRecord struct {
@@ -124,6 +130,60 @@ func (data *Data) GetQuestionByID(ctx context.Context, questionID string) (Quest
 		return QuestionRecord{}, fmt.Errorf("query %s by question_id: %w", questionCollection, err)
 	}
 	return record, nil
+}
+
+func (data *Data) IsQuestionLiked(ctx context.Context, userID, questionID string) (bool, error) {
+	err := data.MongoDB.Collection(userInteractionsCollection).
+		FindOne(
+			ctx,
+			buildQuestionLikeFilter(userID, questionID),
+			options.FindOne().SetProjection(bson.D{{Key: "_id", Value: 1}}),
+		).
+		Err()
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("query %s for question like: %w", userInteractionsCollection, err)
+	}
+	return true, nil
+}
+
+func (data *Data) GetUserQuestionTag(ctx context.Context, userID, questionID string) (int, error) {
+	var record struct {
+		Tag int `bson:"tag"`
+	}
+	err := data.MongoDB.Collection(userQuestionTagCollection).
+		FindOne(
+			ctx,
+			buildUserQuestionTagFilter(userID, questionID),
+			options.FindOne().SetProjection(bson.D{{Key: "_id", Value: 0}, {Key: "tag", Value: 1}}),
+		).
+		Decode(&record)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("query %s for question tag: %w", userQuestionTagCollection, err)
+	}
+	return record.Tag, nil
+}
+
+func buildQuestionLikeFilter(userID, questionID string) bson.D {
+	return bson.D{
+		{Key: "user_id", Value: userID},
+		{Key: "target_type", Value: questionInteractionTargetType},
+		{Key: "target_id", Value: questionID},
+		{Key: "interaction_type", Value: questionLikeInteractionType},
+		{Key: "status", Value: activeInteractionStatus},
+	}
+}
+
+func buildUserQuestionTagFilter(userID, questionID string) bson.D {
+	return bson.D{
+		{Key: "user_id", Value: userID},
+		{Key: "question_id", Value: questionID},
+	}
 }
 
 func (data *Data) ListHotQuestions(

@@ -82,6 +82,31 @@ func TestBuildQuestionDetailFilter(t *testing.T) {
 	}
 }
 
+func TestBuildQuestionLikeFilter(t *testing.T) {
+	got := buildQuestionLikeFilter("user-1", "question-1")
+	want := bson.D{
+		{Key: "user_id", Value: "user-1"},
+		{Key: "target_type", Value: questionInteractionTargetType},
+		{Key: "target_id", Value: "question-1"},
+		{Key: "interaction_type", Value: questionLikeInteractionType},
+		{Key: "status", Value: activeInteractionStatus},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildQuestionLikeFilter() = %#v, want %#v", got, want)
+	}
+}
+
+func TestBuildUserQuestionTagFilter(t *testing.T) {
+	got := buildUserQuestionTagFilter("user-1", "question-1")
+	want := bson.D{
+		{Key: "user_id", Value: "user-1"},
+		{Key: "question_id", Value: "question-1"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildUserQuestionTagFilter() = %#v, want %#v", got, want)
+	}
+}
+
 func TestBuildHotQuestionQuery(t *testing.T) {
 	filter := buildHotQuestionFilter("后端开发")
 	wantFilter := bson.D{

@@ -2,7 +2,9 @@
 
 Source: [Feishu - Interface Document (2): Question Module](https://acn2lw4rwc26.feishu.cn/wiki/KXGdwKDKGiCfYYkgI6OcU3Vfndd)
 
-Snapshot date: 2026-07-21. This snapshot records the sections verified for the
+Detail authentication update: [Feishu - Question Detail Authentication and Frontend Masking](https://acn2lw4rwc26.feishu.cn/wiki/LI37wPdGlitKptkBEP0cTeMen4d)
+
+Snapshot date: 2026-07-22. This snapshot records the sections verified for the
 current implementation; consult Feishu before changing an unrecorded endpoint.
 
 ## Common Response
@@ -15,8 +17,10 @@ current implementation; consult Feishu before changing an unrecorded endpoint.
 }
 ```
 
-Question query endpoints use soft authentication. The current backend has no
-request identity middleware, so list responses follow the visitor behavior.
+Question query endpoints use soft authentication. Missing or invalid tokens are
+treated as visitors; valid JWTs supply a verified `user_id`. The detail endpoint
+uses that identity, while list responses still follow visitor behavior until
+personalized list lookup is implemented.
 
 ## GET /api/v1/question/all/list
 
@@ -103,10 +107,18 @@ Response data contains `total` and `list`. Each list item only contains
 
 Required query parameter: `question_id`.
 
-The response `data` is one complete question using the same field contract as a
-`GET /api/v1/question/list` item. At the current implementation stage, content
-is returned in full. `user_tag` and `user_liked` use the same visitor rules as
-the list endpoint until authentication and user interaction lookup are added.
+The response `data` uses the same field contract as a
+`GET /api/v1/question/list` item and additionally includes
+`analysis_content`.
+
+The question route group uses soft authentication. The controller only consumes
+the `user_id` written by the JWT middleware:
+
+- Visitors receive the first 150 Unicode characters of `content`, an empty
+  `analysis_content`, `user_tag = 0`, and `user_liked = false`.
+- Authenticated users receive complete `content` and `analysis_content`.
+  `user_liked` is derived from an active question-like record in
+  `user_interactions`; `user_tag` is read from `user_question_tag`.
 
 Only normal questions (`status = 1`) are visible. A missing question returns the
 standard response envelope with business code `404` and `data: null`.
